@@ -31,6 +31,13 @@ static constexpr float kDbgMaxSpeed = 0.5f;   // 右摇杆打满对应的平移�
 static constexpr float kYawMaxVel   = 1.0f;   // 左摇杆打满对应的 yaw 角速度 rad/s
 static constexpr float kYawKd       = 1.0f;   // MIT 模式"纯速度"用法阻尼系数(kp=0)
 
+/* === 跟随模式参数 ===
+ * w = kFollowKp * θ
+ * θ = 云台相对底盘的夹角(rad,已在 ins_motor.cpp 里用 angle_offset 标定为 0)
+ * 底盘朝 θ 的方向转,就能把云台"追"回正前方,θ 自然收敛到 0。
+ * 起步给 1.0;觉得跟太肉就加大,出现来回摆就减小。 */
+static constexpr float kFollowKp    = 1.0f;
+
 /* === 摇杆信号保护 === */
 static constexpr float kRcDeadzone   = 0.05f; // 死区:回中误差容限
 static constexpr float kRcValidRange = 1.2f;  // DT7 协议 [-1,1],超此值视为信号异常
@@ -54,7 +61,12 @@ volatile int g_dbg_robot_mode  = 0;     // 0=INIT 1=SEPARATED 2=FOLLOW 3=SPIN 4=
 volatile float   g_dbg_theta            = 0.0f;  // yaw 电机当前角度 rad
 volatile bool    g_dbg_yaw_enabled      = false; // yaw 电机是否使能
 volatile uint8_t g_dbg_yaw_status_code  = 0;     // 状态码:1=正常使能,其它=故障
+/* 故障锁存:记住最后一个"非 0 非 1"的故障码。
+ * enabled 会在 0/1 之间快速跳变,status_code 同理,Ozone 刷新有 100ms 间隔,
+ * 很容易只采到 0 就错过故障瞬间。这个变量只写不清,故障码一旦出现就留住。 */
+volatile uint8_t g_dbg_yaw_last_fault  = 0;     // 0=还没抓到过故障
 volatile float   g_dbg_yaw_vel_cmd      = 0.0f;  // yaw 电机目标角速度
+volatile float   g_dbg_w_cmd            = 0.0f;  // 底盘目标角速度 w(区分三模式的关键量)
 
 /* Private types -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -125,7 +137,31 @@ namespace robot{
     }
   }
 
-  void Robot::DataUpdate() {}
+  void Robot::DataUpdate()
+  {
+    /* 「无条件采集」层:不管当前是 DEAD / RESURRECTION / WORKING,也不管是哪个工作
+     * 模式,每 1ms 都执行一次。所以调试镜像放在这里,任何状态下 Ozone 看到的都是
+     * 真实值,而不是某个模式没跑到时的陈旧初值。
+     *
+     * 之前这些镜像写在 run_seperated() / run_follow() 里,一旦状态机卡在 DEAD
+     * 或没切到对应档位,它们就永远停在初值(status_code=0、enabled=false),
+     * 排查时会被误导成"电机失能",实际根本没采过。 */
+    auto* yaw = GetMotorYaw();
+    g_dbg_theta           = yaw->angle();
+    g_dbg_yaw_enabled     = yaw->is_enabled();
+    g_dbg_yaw_status_code = yaw->status_code();
+
+    /* 故障锁存:status_code 是 0(失能) / 1(使能) / 8~15(故障) 三类。
+     * 只把"故障"那一类(既不是 0 也不是 1)钉住不动,Ozone 里就能看到
+     * 电机到底报的是过压、欠压、过流、超温还是通信丢失。 */
+    const uint8_t sc = static_cast<uint8_t>(yaw->status_code());
+    if (sc != 0 && sc != 1) g_dbg_yaw_last_fault = sc;
+
+    /* 指令类镜像:先清零,真正的模式函数(如果有)会在本周期后面重新赋值。
+     * 这样 DEAD / 急停 时看到的是 0,而不是上一次残留的非零值。 */
+    g_dbg_yaw_vel_cmd = 0.0f;
+    g_dbg_w_cmd       = 0.0f;
+  }
 
   void Robot::RegisterChassis(Chassis* c) {
     chassis_ = c;
@@ -137,6 +173,7 @@ namespace robot{
     /* 急停:四轮 + yaw 电机都归零(急停锁存时 chassis_->setSpeed() 内部已经置 0,
      * 这里再显式发一次确保). */
     if (chassis_) chassis_->setSpeed(0,0,0);
+    g_dbg_w_cmd = 0.0f;
     GetMotorYaw()->setMitInput(0.0f, 0.0f, 0.0f, kYawKd, 0.0f);
   }
 
@@ -154,7 +191,7 @@ namespace robot{
     auto* rc = GetRemoteControl();
     if (!rc) {
       chassis_->setSpeed(0,0,0);
-      GetMotorYaw()->setMitInput(0,0,0,kYawKd,0);
+      GetMotorYaw()->setMitInput(0.0f, 0.0f, 0.0f, kYawKd, 0.0f);
       return;
     }
 
@@ -169,12 +206,9 @@ namespace robot{
     float vx_stick =  kDbgMaxSpeed * ApplyDeadzone(rc->rc_rv());
     float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_rh());
 
-    /* 读 yaw 电机角度,做调试镜像 */
+    /* yaw 角度的采集与调试镜像已移到 DataUpdate()（无条件执行,任何状态都有真值） */
     auto* yaw = GetMotorYaw();
     float theta = yaw->angle();
-    g_dbg_theta           = theta;
-    g_dbg_yaw_enabled     = yaw->is_enabled();
-    g_dbg_yaw_status_code = yaw->status_code();
 
     /* 摇杆系 → 底盘系旋转矩阵(逆时针旋转 θ):
      *   vx = vx_s·cos θ - vy_s·sin θ
@@ -184,6 +218,7 @@ namespace robot{
     float vy = vx_stick * sinf(theta) + vy_stick * cosf(theta);
 
     /* 分离模式:底盘朝向不变(w=0),平移跟着云台方向走 */
+    g_dbg_w_cmd = 0.0f;          // 分离模式的 w 恒为 0
     chassis_->setSpeed(vx, vy, 0.0f);
 
     /* 左摇杆横拨 → yaw 角速度.MIT 纯速度用法 kp=0, kd=kYawKd 只传 vel_des.
@@ -194,7 +229,69 @@ namespace robot{
     yaw->setMitInput(0.0f, yaw_vel, 0.0f, kYawKd, 0.0f);
   }
 
-  void Robot::run_follow() {}
+  void Robot::run_follow()
+  {
+    /* === 跟随模式 ===
+     * 跟分离模式只差一处:底盘角速度 w 的算法。
+     *   分离 : w = 0            → 底盘朝向锁死,只有云台在转
+     *   跟随 : w = kFollowKp*θ  → 底盘朝云台方向追,θ 收敛回 0
+     *
+     * 原理:θ 就是"云台偏离底盘正前方多少"。底盘朝 θ 的方向转 θ 弧度,
+     * 两者就重新同向。因为云台装在底盘上方,"追"的动作直接用 θ 当误差即可,
+     * 不需要 IMU、不需要积分、不需要额外传感器。
+     *
+     * ⚠ 上机后如果底盘是"反着追"(拨左摇杆,底盘往右转),把下面 w 那行改成
+     *   float w = -kFollowKp * theta;
+     * 正负号取决于 yaw 电机 dir 配置和云台安装朝向,只能实测确定。 */
+    if (!chassis_) return;
+    auto* rc = GetRemoteControl();
+    if (!rc) {
+      chassis_->setSpeed(0,0,0);
+      GetMotorYaw()->setMitInput(0.0f, 0.0f, 0.0f, kYawKd, 0.0f);
+      return;
+    }
+
+    /* 信号异常保护:垃圾值全零 */
+    if (!IsRcSignalValid(rc)) {
+      chassis_->setSpeed(0.0f, 0.0f, 0.0f);
+      GetMotorYaw()->setMitInput(0.0f, 0.0f, 0.0f, kYawKd, 0.0f);
+      return;
+    }
+
+    /* 急停锁存:跟分离模式同一个开关 */
+    if (g_estop_latched) {
+      chassis_->setSpeed(0.0f, 0.0f, 0.0f);
+      GetMotorYaw()->setMitInput(0.0f, 0.0f, 0.0f, kYawKd, 0.0f);
+      return;
+    }
+
+    /* yaw 角度的采集与调试镜像已移到 DataUpdate()（无条件执行,任何状态都有真值） */
+    auto* yaw = GetMotorYaw();
+    float theta = yaw->angle();
+
+    /* 摇杆系 → 底盘系(和平移模式完全一样) */
+    float vx_stick =  kDbgMaxSpeed * ApplyDeadzone(rc->rc_rv());
+    float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_rh());
+    float vx = vx_stick * cosf(theta) - vy_stick * sinf(theta);
+    float vy = vx_stick * sinf(theta) + vy_stick * cosf(theta);
+
+    /* ★★★ 跟随模式的核心:底盘角速度 = kFollowKp × θ ★★★
+     * 分离模式那行是 setSpeed(vx, vy, 0.0f),其他一模一样。 */
+    float w = kFollowKp * theta;
+
+    g_dbg_w_cmd = w;
+    chassis_->setSpeed(vx, vy, w);
+
+    /* 云台还是能被左摇杆单独控制(跟分离模式一样) */
+    float yaw_vel = kYawMaxVel * ApplyDeadzone(rc->rc_lh());
+    g_dbg_yaw_vel_cmd = yaw_vel;
+    yaw->setMitInput(0.0f, yaw_vel, 0.0f, kYawKd, 0.0f);
+
+
+
+  }
+
+
   void Robot::run_spin() {}
 
 }
