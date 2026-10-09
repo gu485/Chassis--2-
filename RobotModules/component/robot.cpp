@@ -122,7 +122,6 @@ static bool IsRcSignalValid(hello_world::remote_control::DT7* rc) {
 /* yaw_pid_reset_pending:第一次采样 offset 时顺便复位跟随 PID。
  * 进入跟随的那一刻目标从"未知"跳到"当前对齐位置",不复位的话
  * PID 内部的 last_error 会有残值,第一拍输出一个假偏差。 */
-static bool yaw_pid_reset_pending = true;
 
 volatile int g_dbg_robot_state = 0;     // 0=DEAD 1=RESURRECTION 2=WORKING
 volatile int g_dbg_robot_mode  = 0;     // 0=INIT 1=SEPARATED 2=FOLLOW 3=SPIN 4=EMERGENCY
@@ -431,7 +430,6 @@ namespace robot{
      * (云台的世界朝向要走 CAN 往返,有 0.5~1ms 延迟,用在平移方向上
      *  会让整体运动有拖滞感。) */
     auto* yaw = GetMotorYaw();
-    float theta = yaw->angle();
 
     /* === 云台 yaw 世界系角速度环 ===
      * ① 左摇杆左右 × kx → 目标角速度 w_yaw(相对大地, rad/s)
@@ -457,90 +455,60 @@ namespace robot{
     g_dbg_yaw_final = torque;   // 力矩 N·m
     yaw->setMitInput(0.0f, 0.0f, 0.0f, 0.0f, torque);
 
-    /* 摇杆系 → 底盘系(和平移模式完全一样) */
-    float vx_stick =  kDbgMaxSpeed * ApplyDeadzone(rc->rc_rv());
-    float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_rh());
-    float vx = vx_stick * cosf(theta) - vy_stick * sinf(theta);
-    float vy = vx_stick * sinf(theta) + vy_stick * cosf(theta);
+    /* === 底盘追云台(只用 yaw 电机编码器, 不用 IMU) ===
+     * ① 刚进入跟随模式: 采 kThetaCalibN 次 yaw 编码器角度取平均 → theta_0
+     *    (进入时云台所指方向 = 底盘正前方的基准)。采样期间底盘不动。
+     * ② theta = theta_1 − theta_0 (theta_1 为当前编码器角度, 回绕到 [-π, π))
+     * ③ w = PID(目标 0, 当前 theta), 再 setSpeed 下发。
+     * 进入检测: run_follow 只在跟随模式下被调用, 超过 5ms 没被调用即认为
+     * 中间切走过, 下次进来重新标定。 */
+    constexpr int kThetaCalibN = 100;
+    static bool  calib_done = false;
+    static int   calib_cnt  = 0;
+    static float calib_sum  = 0.0f;
+    static float theta_0    = 0.0f;
+    static uint32_t last_ms = 0;
 
-    /* === 跟随模式核心:底盘追云台的世界朝向 ===
-     *
-     * 架构:两个环各自闭环,完全解耦。
-     *   云台环(在云台板):摇杆 → 目标角度 → 云台 PID → 力矩。
-     *     误差用云台自己的 IMU,所以底盘怎么转都不影响云台的"世界朝向"。
-     *   底盘环(在底盘板):云台世界朝向 − 底盘世界朝向 → w。
-     *     两个角都在世界系,底盘转动会被自己的 IMU 立刻看到并反向补偿,
-     *     所以云台拨到哪,底盘最终都会转到和它同向。
-     *
-     * 相比旧的"云台直接给云台补偿 -w"的做法,新架构的云台**不再需要**
-     * 知道底盘转了多少(那个 kFollowThetaBoost ×8 的放大 hack 也就没了),
-     * 因为两个环互不干扰,不需要事后补偿。 */
+    const uint32_t now_ms = HAL_GetTick();
+    if (now_ms - last_ms > 5) {
+      calib_done = false;
+      calib_cnt  = 0;
+      calib_sum  = 0.0f;
+      if (auto* p = GetPidFollow()) p->reset();
+    }
+    last_ms = now_ms;
 
-    float follow_err = 0.0f;
+    const float theta_1 = yaw->angle();
     float w = 0.0f;
-    bool  follow_valid = false;
-    /* 两块板 IMU 零点独立,需要一个基准把它们对齐。声明在 if 外,
-     * 因为下面的 else 分支要把它作废。 */
-    static bool  offset_valid = false;
-    static float offset = 0.0f;
+    float vx = 0.0f, vy = 0.0f;
+    float theta_rel = 0.0f;
 
-    auto* comm = GetGimbalChassisComm();
-    auto* imu  = GetImu();
-
-    if (comm != nullptr && imu != nullptr &&
-        !comm->isOffline() && imu->calib_done()) {
-
-      /* 云台世界朝向:云台板 IMU 解算,经双板通讯传来。
-       * imu_ready 必须在云台板上置位后才有效 —— 标定完成前 euler_ 全是 0,
-       * 发过来是假值,拿它当方向会让底盘朝错的方向猛转。 */
-      if (comm->gimbal_data().imu_ready != 0u) {
-        const float psi_gimbal = comm->gimbal_data().gimbal_yaw_world;
-
-        float psi_chassis = 0.0f;
-        imu->yaw(&psi_chassis);
-
-        /* 两块板的 IMU 零点独立:云台的 ψ=0 是云台上电那一刻的朝向,
-         * 底盘的 ψ=0 是底盘上电那一刻。两者装配关系和上电时刻都不保证一致,
-         * 直接相减会得到一个恒定的偏差(可能几十度),底盘会一直朝一个方向转。
-         *
-         * 解法:进入跟随模式时采样一次基准,之后用差值。
-         * 这个基准只需采一次 —— 两个 IMU 的零点一旦确定就不再变。 */
-        if (!offset_valid) {
-          offset = WrapAngle(psi_gimbal - psi_chassis);
-          offset_valid = true;
-          if (yaw_pid_reset_pending) {
-            if (auto* p = GetPidFollow()) p->reset();
-            yaw_pid_reset_pending = false;
-          }
-        }
-
-        /* 误差(必须回绕,否则 ±2π 附近的值会让底盘掉头一圈) */
-        follow_err = WrapAngle(psi_gimbal - psi_chassis - offset);
-        g_dbg_follow_psi_gimbal  = psi_gimbal;
-        g_dbg_follow_psi_chassis = psi_chassis;
-
-        auto* pid = GetPidFollow();
-        w = (pid != nullptr) ? -pid->calc(0.0f, follow_err) : 0.0f;
-
-        /* 死区:|误差| < kFollowThetaDeadZone 时认为已跟到位,w 归零。
-         * 不加的话误差在 0 附近抖动 → w 跟着抖 → 底盘持续小幅旋转。 */
-        if (fabsf(follow_err) < kFollowThetaDeadZone) {
-          w = 0.0f;
-        }
-        follow_valid = true;
+    if (!calib_done) {
+      /* 零位标定: 底盘保持静止 */
+      calib_sum += theta_1;
+      if (++calib_cnt >= kThetaCalibN) {
+        theta_0 = calib_sum / static_cast<float>(kThetaCalibN);
+        calib_done = true;
       }
     } else {
-      /* 双板离线 / 云台 IMU 没标定完 / 底盘 IMU 没标定完。
-       * 此时 w 保持 0 —— 宁可底盘不跟,也不要拿假数据转。
-       * offset 也作废,下次条件满足时重新采样。 */
-      offset_valid = false;
-      g_dbg_follow_psi_gimbal  = 0.0f;
-      g_dbg_follow_psi_chassis = 0.0f;
+      theta_rel = WrapAngle(theta_1 - theta_0);
+
+      /* 摇杆系 → 底盘系: 平移方向跟随云台 */
+      float vx_stick =  kDbgMaxSpeed * ApplyDeadzone(rc->rc_rv());
+      float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_rh());
+      vx = vx_stick * cosf(theta_rel) - vy_stick * sinf(theta_rel);
+      vy = vx_stick * sinf(theta_rel) + vy_stick * cosf(theta_rel);
+
+      /* 底盘转速: 目标 0, 当前 theta。符号沿用之前实测的 w = -pid(0, θ)
+       * (= +kp·θ, 底盘朝云台方向转); 若实车反着追, 去掉前面的负号。 */
+      auto* pid = GetPidFollow();
+      w = (pid != nullptr) ? -pid->calc(0.0f, theta_rel) : 0.0f;
+      if (fabsf(theta_rel) < kFollowThetaDeadZone) w = 0.0f;
     }
 
-    g_dbg_follow_err    = follow_err;
-    g_dbg_follow_valid  = follow_valid;
-    g_dbg_w_cmd = w;
+    g_dbg_follow_err   = theta_rel;
+    g_dbg_follow_valid = calib_done;
+    g_dbg_w_cmd        = w;
 
     chassis_->setSpeed(vx, vy, w, /*use_friction_ff=*/false);
   }

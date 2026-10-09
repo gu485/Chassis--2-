@@ -12,6 +12,8 @@
 #include "spi.h"
 #include "gpio.h"
 
+#include <cmath>
+
 namespace hello_world
 {
 namespace imu
@@ -73,6 +75,16 @@ void Imu::update(void)
 
   /* ② 阶段一: 零漂标定(前 1000 帧 = 1 秒) */
   if (!calib_done_) {
+    /* 静止检测: 任一轴角速度超过阈值说明车在动/被碰,
+     * 此前累加的样本作废, 从头重新采。否则带着运动量算出的零漂会一直残留。 */
+    if (fabsf(gyro_data_[0]) > kCalibMotionThres ||
+        fabsf(gyro_data_[1]) > kCalibMotionThres ||
+        fabsf(gyro_data_[2]) > kCalibMotionThres) {
+      calib_cnt_ = 0;
+      gyro_offset_[0] = gyro_offset_[1] = gyro_offset_[2] = 0.0f;
+      return;
+    }
+
     gyro_offset_[0] += gyro_data_[0];
     gyro_offset_[1] += gyro_data_[1];
     gyro_offset_[2] += gyro_data_[2];

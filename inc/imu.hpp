@@ -64,6 +64,8 @@ class Imu
   BMI088ErrState init_err_ = kBMI088ErrStateNoErr;
 
   static constexpr uint32_t kCalibSamples = 1000;
+  /* 标定期间单轴角速度超过此值(rad/s)视为非静止, 重新开始采样 */
+  static constexpr float    kCalibMotionThres = 0.1f;
 };
 
 }  // namespace imu
