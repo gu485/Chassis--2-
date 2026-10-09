@@ -34,6 +34,10 @@ extern volatile bool g_estop_latched;       // chassis.cpp  :左拨杆急停档�
 /* === 分离模式参数 === */
 static constexpr float kDbgMaxSpeed = 0.07f;   // 右摇杆打满对应的平移速度 m/s
 static constexpr float kYawMaxVel   = 1.0f;   // 左摇杆打满对应的 yaw 角速度 rad/s
+/* 左摇杆满杆对应的云台世界系角速度 rad/s (w_yaw = kx × 摇杆) */
+static constexpr float kYawRateKx   = 1.0f;
+/* 陀螺仪 z 轴 → 云台 yaw 角速度符号: 与电机力矩方向相反则改 -1 */
+static constexpr float kYawRateSign = 1.0f;
 static constexpr float kYawKd       = 2.0f;   // MIT 模式"纯速度"用法阻尼系数(kp=0)
 
 /* === 小陀螺模式参数 === */
@@ -142,6 +146,7 @@ volatile float g_dbg_yaw_vel_real = 0.0f;
 /* 跟随模式下发的云台最终下发速度指令(yaw_vel − w)。云台板接管后这个值
  * 只用于调试镜像,底盘不再把它发给电机。 */
 volatile float g_dbg_yaw_final = 0.0f;
+volatile float g_dbg_w_current = 0.0f;  // IMU 测得的云台世界系 yaw 角速度 rad/s
 
 /* === 跟随模式调试(新架构:两个世界朝向的差) === */
 /* psi_gimbal  : 云台世界朝向 rad(经双板通讯从云台板 IMU 传来)
@@ -428,11 +433,29 @@ namespace robot{
     auto* yaw = GetMotorYaw();
     float theta = yaw->angle();
 
-    /* 摇杆 → 云台目标角速度。
-     * 注意:这里只发给底盘自己的调试镜像和云台板(通过双板通讯),
-     * 底盘**不再**驱云台电机 —— 云台板的 Gimbal 类负责闭环。 */
-    float yaw_vel = kYawMaxVel * ApplyDeadzone(rc->rc_lh());
-    g_dbg_yaw_vel_cmd = yaw_vel;
+    /* === 云台 yaw 世界系角速度环 ===
+     * ① 左摇杆左右 × kx → 目标角速度 w_yaw(相对大地, rad/s)
+     * ② PID(w_yaw, w_current) → 力矩 → setMitInput 的 torq 字段
+     * w_current 取 IMU 陀螺仪 z 轴(世界系绕竖直轴角速度, 逆时针为正)。
+     * MIT 帧只用力矩: pos/vel/kp/kd 全 0, 电机只当力矩执行器。 */
+    float w_yaw = kYawRateKx * ApplyDeadzone(rc->rc_lh());
+    g_dbg_yaw_vel_cmd = w_yaw;
+
+    float w_current = 0.0f;
+    float torque = 0.0f;
+    auto* imu_y = GetImu();
+    auto* pid_y = GetPidYawRate();
+    if (imu_y != nullptr && imu_y->calib_done() && pid_y != nullptr) {
+      float g3[3] = {0, 0, 0};
+      imu_y->gyro(g3);
+      w_current = kYawRateSign * g3[2];
+      torque = pid_y->calc(w_yaw, w_current);
+    } else if (pid_y != nullptr) {
+      pid_y->reset();   // IMU 未就绪: 力矩 0, 避免积分累积
+    }
+    g_dbg_w_current = w_current;
+    g_dbg_yaw_final = torque;   // 力矩 N·m
+    yaw->setMitInput(0.0f, 0.0f, 0.0f, 0.0f, torque);
 
     /* 摇杆系 → 底盘系(和平移模式完全一样) */
     float vx_stick =  kDbgMaxSpeed * ApplyDeadzone(rc->rc_rv());

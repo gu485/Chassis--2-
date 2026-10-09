@@ -679,3 +679,10 @@
 23489	25773	8129173472783958	third_party/libcmsis_dsp.a	8ce9c58d579b4e79
 1524	1874	8130018070384332	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
 124	2324	8129173643327472	CMakeFiles/omni_chassis.dir/src/imu.cpp.obj	e6fe64de56b555ae
+26	431	8132506644161610	CMakeFiles/omni_chassis.dir/Instance/component/ins_pid.cpp.obj	eb3dace644d18bdb
+35	1104	8132506644261686	CMakeFiles/omni_chassis.dir/RobotModules/component/chassis.cpp.obj	f55b90b5136b7abf
+51	1108	8132506644411621	CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj	fc8f4a255cd4613e
+42	1273	8132506644321623	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
+1274	3388	8132506656642459	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
+36	1003	8132506762350089	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
+1003	1232	8132506772021076	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99

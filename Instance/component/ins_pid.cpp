@@ -57,4 +57,17 @@ hello_world::pid::Pid *GetPidFollow() {
   }
   return p;
 }
+hello_world::pid::Pid *GetPidYawRate() {
+  static hello_world::pid::Pid *p = nullptr;
+  if (p == nullptr) {
+    // 云台 yaw 角速度环:误差 rad/s → 力矩 N·m(DM4310)。起步值,上机再调
+    p = new hello_world::pid::Pid(
+        /*kp=*/0.3f,
+        /*ki=*/0.5f,
+        /*kd=*/0.0f,
+        /*i_limit=*/1.0f,
+        /*out_limit=*/3.0f);   // 力矩限幅 N·m
+  }
+  return p;
+}
 /* Private function definitions ----------------------------------------------*/
