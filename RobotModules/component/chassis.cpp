@@ -42,8 +42,19 @@ volatile float g_test_wheel_curr[4] = {0.0f, 0.0f, 0.0f, 0.0f};
  * 材质环境下运动,观察每个电机反馈电流的稳定值,取该值作为 t(单位:安培,填绝对值,
  * 符号由代码根据 target 方向自动处理)。
  * Ozone 里改这两个数组实时生效,不用重新烧录。 */
+/* ★ 临时统一值:先让四个轮子出力一致,排除"前进歪"是前馈差异导致的 ★
+ * 实测前进时车往一侧歪,怀疑是四个前馈值不同导致的(0号2.1 最大,1号1.75 最小)。
+ * 前馈是直接叠加到电流上的,差 0.35A 足以让车偏。
+ * 先统一成 2.0,再实车走直线看还歪不歪:
+ *   - 不歪了 → 就是前馈标定问题,之后按"哪个轮子出力不够就调大"逐个重新标定
+ *   - 还歪  → PID 增益不对称,或者机械问题(轮子接触不均/安装角偏差)
+ * 标定完之后记得把这行注释放开,恢复成每个轮子各自的值。 */
+volatile float g_friction_ff_t_fwd[4] = {2.0f, 2.0f, 2.0f, 2.0f};  // 前后(vx)方向,临时统一值
+volatile float g_friction_ff_t_lat[4] = {2.0f, 2.0f, 2.0f, 2.0f};  // 左右(vy)方向,临时统一值
+/* ↓↓↓ 原始标定值(前进歪排查期间停用,标定完成后恢复)↓↓↓
 volatile float g_friction_ff_t_fwd[4] = {2.1f, 1.75f, 1.9f, 2.0f};  // 前后(vx)方向标定值
-volatile float g_friction_ff_t_lat[4] = {2.1f, 1.75f, 1.9f, 2.0f};  // 左右(vy)方向标定值
+volatile float g_friction_ff_t_lat[4] = {2.1f, 1.75f, 1.9f, 2.0f};  // 左右(vy)方向标定值 */
+/* ↑↑↑ 原始标定值 ↑↑↑ */
 
 /* 摩擦前馈总开关:Ozone 里改这个变量实时生效,不用重新烧录。
  *
@@ -92,6 +103,21 @@ volatile float g_dbg_w1_target = 0.0f;
 volatile float g_dbg_w1_vel    = 0.0f;
 volatile float g_dbg_w1_pidraw = 0.0f;
 volatile float g_dbg_w1_curr   = 0.0f;
+
+/* === 惯性制动前馈(解决"摇杆回中后车还在小飘")===
+ * 现象:DT7 摇杆已经回中,底盘却停不下来,原地小幅飘移。
+ *
+ * 原因:轮子有惯性,摇杆回中瞬间 target 归零,但轮子还在按之前的速度转,
+ * 速度环要等误差累积到一定程度才给出足够制动,这段时间就是"飘"。
+ * PID 里的 kd 项理论上能提供阻尼,但 1kHz 采样下原始差分噪声太大
+ * (相邻两拍转速能差几百),一开 kd 就是放大噪声,所以 kd 只能给 0。
+ *
+ * 这里用开环惯性前馈绕开:记住上一拍的轮子转速,本拍给一个反向电流。
+ * 惯量小,系数 0.02 起步,Ozone 里改 kInertiaFfGain 实时生效。
+ * 不引入反馈,所以不会跟 PID 抢,也不放大噪声。 */
+volatile float kInertiaFfGain = 8.0f;   // 惯性制动系数,起步 0.02,大了会"急刹"
+static float s_last_vel[4] = {0, 0, 0, 0};  // 上一拍各轮转速(static,不入栈)
+volatile float g_dbg_brake[4] = {0, 0, 0, 0}; // 制动电流,Ozone 里看加了多少
 /* External variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Exported function definitions ---------------------------------------------*/
@@ -151,6 +177,16 @@ void Chassis::setSpeed(float vx, float vy, float w, bool use_friction_ff) {
     // 用电机自己的换算表把 raw 转成安培,再写进电机单例(下一毫秒 CommTask 负责 encode + 发)
     float curr = motor->raw2Curr(raw_out);
 
+    /* 惯性制动前馈:本拍给一个跟"上一拍转速"反向的电流,抵消轮子惯性。
+     * 摇杆回中后 target 归零,这个项让车快速刹住,不再小飘。
+     * 用上一拍的转速而不是本拍的,是因为本拍 target 已经是 0,
+     * 差分项要靠 kd,而 kd 在 1kHz 下不能开(见 kInertiaFfGain 上方注释)。
+     * 制动量远小于 out_limit,不会顶到限幅。 */
+    float brake = -s_last_vel[i] * kInertiaFfGain;
+    g_dbg_brake[i] = brake;
+    curr += brake;
+    s_last_vel[i] = motor->vel();   // 存本拍转速,供下一拍使用
+
     /* 阻力扭矩前馈(低配版):按目标转速方向叠加固定补偿电流,抵消静摩擦。
      * target==0 时不加(方向不明确,避免在零点附近来回抖动)。数组里存的是
      * 绝对值,符号在这里根据 target 的正负自动处理,不用在数组里填负数。
@@ -168,7 +204,11 @@ void Chassis::setSpeed(float vx, float vy, float w, bool use_friction_ff) {
       }
     }
 
-    if (g_estop_latched) curr = 0.0f;
+    if (g_estop_latched) {
+      curr = 0.0f;
+      s_last_vel[i] = 0.0f;   // 急停时清掉惯性历史,否则解除急停后第一拍会有一个
+                              // 突发的制动电流(而且急停后电机已经被断电,vel 不可信)
+    }
     g_wheel_curr[i] = curr;         // 节点③:实际写进电机的安培值
 
     if (i == 0 || i == 1) {

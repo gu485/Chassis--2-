@@ -450,7 +450,6 @@ Status DaMiao::setMitInput(float pos_des, float vel_des, float kp, float kd, flo
     return Status::kOk;
   }
 }
-//
 Status DaMiao::setVelInput(float vel_input)
 {
   if (enable_mode_switch_) {
@@ -518,11 +517,6 @@ void DaMiao::init(uint8_t id,
   auto_enable_ = auto_enable;
   enable_mode_switch_ = enable_mode_switch;
 
-  /* 如果禁用模式切换，则默认为 MIT 模式*/
-  if (!enable_mode_switch) {
-    dm_status_.current_ctrl_mode = CtrlMode::kMIT;
-  }
-
   angle_ = 0.0f;
   vel_ = 0.0f;
   vel_raw_ = 0.0f;
@@ -539,6 +533,15 @@ void DaMiao::init(uint8_t id,
 
   dm_status_ = DMStatus();
   comm_data_ = CommData();
+
+  /* 如果禁用模式切换，则默认为 MIT 模式。必须放在上面 dm_status_ = DMStatus()
+   * 之后——DMStatus 默认构造的 current_ctrl_mode 是 kUnknown，这行如果写在
+   * 重置之前会被直接覆盖掉，导致 encode() 里 switch(current_ctrl_mode) 永远
+   * 走不进 kMIT 分支（也走不进 kVel，因为 target 也没人置为 kVel 以外的初值），
+   * 只会命中 default 直接 return false——电机使能后收不到任何真正的控制帧。 */
+  if (!enable_mode_switch) {
+    dm_status_.current_ctrl_mode = CtrlMode::kMIT;
+  }
 }
 
 /* Private function definitions ----------------------------------------------*/

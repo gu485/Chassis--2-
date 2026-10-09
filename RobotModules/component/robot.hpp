@@ -17,6 +17,7 @@
 #define CHASSIS_ROBOT_MODULES_ROBOT_HPP_
 
 /* Includes ------------------------------------------------------------------*/
+#include <cstdint>                         // uint32_t
 #include "chassis.hpp"
 /* Exported macro ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
@@ -53,7 +54,10 @@ namespace robot{
     void run_spin();
     private:
     Chassis* chassis_= nullptr;
-  }
+    volatile WorkMode  mode_     = WorkMode::INIT;     // 工作模式(三模式 + 急停)
+    volatile LifeState state_    = LifeState::DEAD;    // 生命周期三态
+    uint32_t           resurrection_enter_ms_ = 0;     // 进入 RESURRECTION 的时刻
+  };
 }
 
 

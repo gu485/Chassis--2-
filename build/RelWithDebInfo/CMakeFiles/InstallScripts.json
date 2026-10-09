@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/ROBO/omni_skeleton/Chassis (2)/build/RelWithDebInfo/cmake_install.cmake",
+		"D:/ROBO/omni_skeleton/Chassis (2)/build/RelWithDebInfo/cmake/stm32cubemx/cmake_install.cmake",
+		"D:/ROBO/omni_skeleton/Chassis (2)/build/RelWithDebInfo/third_party/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
