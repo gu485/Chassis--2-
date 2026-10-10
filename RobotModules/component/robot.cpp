@@ -34,10 +34,6 @@ extern volatile bool g_estop_latched;       // chassis.cpp  :左拨杆急停档�
 /* === 分离模式参数 === */
 static constexpr float kDbgMaxSpeed = 0.07f;   // 右摇杆打满对应的平移速度 m/s
 static constexpr float kYawMaxVel   = 1.0f;   // 左摇杆打满对应的 yaw 角速度 rad/s
-/* 左摇杆满杆对应的云台世界系角速度 rad/s (w_yaw = kx × 摇杆) */
-static constexpr float kYawRateKx   = 1.0f;
-/* 陀螺仪 z 轴 → 云台 yaw 角速度符号: 与电机力矩方向相反则改 -1 */
-static constexpr float kYawRateSign = 1.0f;
 static constexpr float kYawKd       = 2.0f;   // MIT 模式"纯速度"用法阻尼系数(kp=0)
 
 /* === 小陀螺模式参数 === */
@@ -48,10 +44,6 @@ static constexpr float kYawKd       = 2.0f;   // MIT 模式"纯速度"用法阻�
  * g_dbg_spin_omega(volatile,Ozone 可实时改),这个 constexpr 只作为
  * "标定参考值"保留 —— 两者调好后保持一致即可。
  * 3.0 rad/s ≈ 172°/s,约 2.1 秒转一圈;麦克纳姆轮高速自旋容易打滑。 */
-[[maybe_unused]] static constexpr float kSpinOmega = 1.5f;
-/* 转速死区(摇杆归一化后的值)。推过这个量才给转速,
- * 避免"手一碰摇杆底盘就转"。0.25 对应摇杆约 1/4 行程。 */
-static constexpr float kSpinMinStick = 0.4f;
 /* w 斜率限制(rad/s 每 1ms 拍):0.003 → 约 0.5 秒从 0 加到 1.5 rad/s */
 static constexpr float kSpinWRamp = 0.003f;
 
@@ -69,7 +61,8 @@ static constexpr float kSpinWRamp = 0.003f;
  *   1.5 rad/s ≈ 86°/s → 4.2 秒一圈
  *   2.0 rad/s ≈ 115°/s → 3.1 秒一圈
  *   3.0 rad/s ≈ 172°/s → 2.1 秒一圈 */
-volatile float g_dbg_spin_omega = 1.5f;
+/* 小陀螺转速系数 kw: w = kw × 右杆上下(rad/s)。Ozone 可实时改。 */
+volatile float g_dbg_spin_kw = 1.5f;
 
 /* === 跟随模式参数 ===
  * w = kFollowKp * θ
@@ -117,6 +110,12 @@ static bool IsRcSignalValid(hello_world::remote_control::DT7* rc) {
          fabsf(rc->rc_lv()) <= kRcValidRange;
 }
 
+/* 云台相对底盘的零位 theta_0:跟随模式进入时标定一次(云台对准车头的编码器读数),
+ * 小陀螺模式共用同一个零位,保证两个模式的「云台坐标系」定义完全一致。
+ * 没标定过(没进过跟随)时按 0 处理,即直接用 yaw 电机的 angle_offset 零点。 */
+static bool  s_theta0_valid = false;
+static float s_theta0       = 0.0f;
+
 /* === 调试镜像(Ozone Symbols window 直接搜名字) === */
 /* 跟随模式参数 */
 /* yaw_pid_reset_pending:第一次采样 offset 时顺便复位跟随 PID。
@@ -145,7 +144,6 @@ volatile float g_dbg_yaw_vel_real = 0.0f;
 /* 跟随模式下发的云台最终下发速度指令(yaw_vel − w)。云台板接管后这个值
  * 只用于调试镜像,底盘不再把它发给电机。 */
 volatile float g_dbg_yaw_final = 0.0f;
-volatile float g_dbg_w_current = 0.0f;  // IMU 测得的云台世界系 yaw 角速度 rad/s
 
 /* === 跟随模式调试(新架构:两个世界朝向的差) === */
 /* psi_gimbal  : 云台世界朝向 rad(经双板通讯从云台板 IMU 传来)
@@ -174,8 +172,6 @@ volatile float g_dbg_spin_ref_yaw   = 0.0f;
 
 /* 小陀螺平移世界锁定的基准:进入模式时冻结的云台世界朝向(rad)。
  * 这是常量,之后不再更新 —— 云台自转期间的抖动不能影响平移参考系。 */
-static bool  spin_ref_valid = false;
-static float spin_ref_psi = 0.0f;
 
 /* === IMU 调试镜像(搜 g_dbg_imu 即可找到所有) === */
 /* init_err:0=通,bit0=加速度计 ID 错,bit1=陀螺仪 ID 错,bit2/3=自检失败,bit4/5=配置报错 */
@@ -378,7 +374,7 @@ namespace robot{
      * 底盘这里只保留调试镜像,实际下发由 comm_task 通过双板通讯
      * 把 rc_lh 原始值发给云台板。绝不能在这里再 setMitInput ——
      * 两个节点同时驱同一个电机 ID 会让 CAN 仲裁随机,云台抽搐。 */
-    float yaw_vel = kYawMaxVel * ApplyDeadzone(rc->rc_lh());
+    float yaw_vel = -kYawMaxVel * ApplyDeadzone(rc->rc_lh());  // 与云台板方向一致(已取反)
     if (g_estop_latched) yaw_vel = 0.0f;
     g_dbg_yaw_vel_cmd = yaw_vel;
   }
@@ -431,30 +427,6 @@ namespace robot{
      *  会让整体运动有拖滞感。) */
     auto* yaw = GetMotorYaw();
 
-    /* === 云台 yaw 世界系角速度环 ===
-     * ① 左摇杆左右 × kx → 目标角速度 w_yaw(相对大地, rad/s)
-     * ② PID(w_yaw, w_current) → 力矩 → setMitInput 的 torq 字段
-     * w_current 取 IMU 陀螺仪 z 轴(世界系绕竖直轴角速度, 逆时针为正)。
-     * MIT 帧只用力矩: pos/vel/kp/kd 全 0, 电机只当力矩执行器。 */
-    float w_yaw = kYawRateKx * ApplyDeadzone(rc->rc_lh());
-    g_dbg_yaw_vel_cmd = w_yaw;
-
-    float w_current = 0.0f;
-    float torque = 0.0f;
-    auto* imu_y = GetImu();
-    auto* pid_y = GetPidYawRate();
-    if (imu_y != nullptr && imu_y->calib_done() && pid_y != nullptr) {
-      float g3[3] = {0, 0, 0};
-      imu_y->gyro(g3);
-      w_current = kYawRateSign * g3[2];
-      torque = pid_y->calc(w_yaw, w_current);
-    } else if (pid_y != nullptr) {
-      pid_y->reset();   // IMU 未就绪: 力矩 0, 避免积分累积
-    }
-    g_dbg_w_current = w_current;
-    g_dbg_yaw_final = torque;   // 力矩 N·m
-    yaw->setMitInput(0.0f, 0.0f, 0.0f, 0.0f, torque);
-
     /* === 底盘追云台(只用 yaw 电机编码器, 不用 IMU) ===
      * ① 刚进入跟随模式: 采 kThetaCalibN 次 yaw 编码器角度取平均 → theta_0
      *    (进入时云台所指方向 = 底盘正前方的基准)。采样期间底盘不动。
@@ -488,6 +460,8 @@ namespace robot{
       calib_sum += theta_1;
       if (++calib_cnt >= kThetaCalibN) {
         theta_0 = calib_sum / static_cast<float>(kThetaCalibN);
+        s_theta0 = theta_0;
+        s_theta0_valid = true;
         calib_done = true;
       }
     } else {
@@ -496,8 +470,10 @@ namespace robot{
       /* 摇杆系 → 底盘系: 平移方向跟随云台 */
       float vx_stick =  kDbgMaxSpeed * ApplyDeadzone(rc->rc_rv());
       float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_rh());
-      vx = vx_stick * cosf(theta_rel) - vy_stick * sinf(theta_rel);
-      vy = vx_stick * sinf(theta_rel) + vy_stick * cosf(theta_rel);
+      /* 旋转角取 -theta_rel: 实测云台转到侧面时平移方向反了,
+       * 说明编码器 θ 的正方向与底盘 w 的逆时针正方向相反。 */
+      vx =  vx_stick * cosf(theta_rel) + vy_stick * sinf(theta_rel);
+      vy = -vx_stick * sinf(theta_rel) + vy_stick * cosf(theta_rel);
 
       /* 底盘转速: 目标 0, 当前 theta。符号沿用之前实测的 w = -pid(0, θ)
        * (= +kp·θ, 底盘朝云台方向转); 若实车反着追, 去掉前面的负号。 */
@@ -517,27 +493,17 @@ namespace robot{
   void Robot::run_spin()
   {
     /* === 小陀螺模式 ===
-     *
-     * 行为:底盘按固定角速度自转,云台靠自己的 IMU 世界锁定保持朝向不变。
-     *
-     * 为什么云台什么都不用做:云台板不知道当前是什么模式,只跟着底盘
-     * 经双板通讯发来的 rc_lh 走。小陀螺下底盘会额外发一个
-     * "云台使能=0"的标志位,云台收到后停止累积目标角度,纯靠自己的
-     * IMU 世界锁定保持朝向 —— 底盘转多少,它主动转回来补偿多少,
-     * 始终指着进入小陀螺时的世界方向。这正是小陀螺模式的意义。
-     *
-     * 
-     * 
-     * 底盘这边只管一件事:输出一个恒定的 w。
+     * 底盘自转 + 平移;平移方向取云台坐标系的前后左右;云台 yaw 由右杆左右控制。
      *
      * 摇杆分配:
-     *   左摇杆上下 rc_lv → 前进后退
-     *   左摇杆左右 rc_lh → 左右横移(本模式独占,云台让出通道)
-     *   右摇杆上下 rc_rv → 自转角速度
-     *   右摇杆左右 rc_rh → 空闲
+     *   左杆上下 rc_lv → 云台系前后    左杆左右 rc_lh → 云台系左右
+     *   右杆上下 rc_rv → 小陀螺转速 w = kw × 摇杆
+     *   右杆左右 rc_rh → 云台 yaw 目标角速度(经双板通讯发给云台板,
+     *                    comm_task 在小陀螺模式下把 rc_rh 填进 rc_lh_q 字段,
+     *                    云台板的速度环与跟随模式完全一致)
      *
-     * 平移方向按"世界系锁定":进模式那一刻云台指向哪,推前就一直往
-     * 那个世界方向走,车身怎么转都不变。详见下面 ref_yaw 那段注释。 */
+     * 云台坐标系:跟随模式同款,用 yaw 电机编码器角 theta(云台相对底盘),
+     * 把云台系下的"前/左"速度旋转到底盘系,底盘转到哪,"前"始终指向云台所指方向。 */
     if (!chassis_) return;
     auto* rc = GetRemoteControl();
 
@@ -550,24 +516,12 @@ namespace robot{
       return;
     }
 
-    /* 右摇杆上下 → 自转角速度。
-     * 死区之外线性映射到 ±kSpinOmega,摇杆回中 w 就是 0,底盘停转。 */
-    float spin_stick = ApplyDeadzone(rc->rc_rv());
+    /* ③ 右杆上下 → 转速 w = kw × 摇杆(死区在 ApplyDeadzone 里) */
+    const float spin_stick = ApplyDeadzone(rc->rc_rv());
+    const float w_target   = g_dbg_spin_kw * spin_stick;
 
-    /* 转速死区 + 连续映射:
-     * 推过 kSpinMinStick 才开始给转速,但从 0 平滑爬升(不是跳到 kSpinMinStick×omega)。
-     * 原来的写法在 0.4 处有阶跃,一跨过去 w 瞬间跳到 0.6 rad/s,
-     * 轮子速度环 kp 很大,四个轮子同时顶满电流,表现为"一推就狂转"。 */
-    float w_target = 0.0f;
-    const float abs_stick = fminf(fabsf(spin_stick), 1.0f);
-    if (abs_stick > kSpinMinStick) {
-      const float mag = (abs_stick - kSpinMinStick) / (1.0f - kSpinMinStick);
-      w_target = copysignf(mag * g_dbg_spin_omega, spin_stick);
-    }
-
-    /* 斜率限制:w 每拍最多变 kSpinWRamp。目标阶跃时轮速目标也是斜坡,
-     * 速度环不会饱和。断档(切走又切回)超过 5ms 没被调用就从 0 重新起爬,
-     * 避免带着上次的残留 w 起步。 */
+    /* 斜率限制:w 每拍最多变 kSpinWRamp,避免阶跃让四个轮子同时顶满电流。
+     * 超过 5ms 没被调用(切走又切回)从 0 重新起爬。 */
     static float w_out = 0.0f;
     static uint32_t last_ms = 0;
     const uint32_t now_ms = HAL_GetTick();
@@ -579,104 +533,28 @@ namespace robot{
     else                                    w_out = w_target;
     const float w = w_out;
 
-    /* === 平移方向:世界系锁定 ===
-     *
-     * 需求:进小陀螺那一刻云台指向哪,"前"就一直指哪个世界方向,
-     * 车身怎么转都不变。
-     *
-     * 实现:进模式时把云台的世界朝向**冻结**成一个常量基准,
-     * 之后每拍只用它减底盘的实时朝向:
-     *
-     *   ref_yaw = spin_ref_psi(常量) − ψ_chassis(实时)
-     *
-     * 底盘顺时针转 90° → ref_yaw 变成 −90° → 推"前"在世界系下
-     * 依然指向进模式时云台指的方向。
-     *
-     * ⚠ 关键:基准必须是冻结的常量,不能每拍重算 (ψ_gimbal − ψ_chassis)。
-     *   自转时云台被底盘带着偏、再被自己的 IMU 闭环拉回来,ψ_gimbal
-     *   持续抖动;如果每拍减这个实时值,参考系就跟着抖,
-     *   现象是"走一点方向就飘"。云台想指向哪在进入模式时就定了,
-     *   之后不该再变。
-     *
-     * 为什么不能用编码器的 theta:它是"云台相对底盘"的夹角,
-     * 底盘自转时剧烈变化,不能用来确定世界方向。
-     *
-     * 数据不可用(双板离线/IMU 没标定完)时退化成底盘系:
-     * 推"前"往车头走。这比完全不动要好,至少还能开回去。 */
-    float vx = 0.0f;
-    float vy = 0.0f;
-    float ref_yaw = 0.0f;
+    /* ①② 云台坐标系 + 左杆平移。
+     * 符号约定与之前一致:左杆通道与右杆物理朝向相反,故 lv、lh 取负。 */
+    auto* yaw = GetMotorYaw();
+    /* 与跟随模式同一个定义: theta = 编码器角 − theta_0, 回绕到 [-π, π)。 */
+    const float theta = WrapAngle(yaw->angle() - (s_theta0_valid ? s_theta0 : 0.0f));
+    /* yaw 电机掉使能/报故障时编码器角会冻结, 继续按旧 theta 旋转平移方向,
+     * 底盘一转, 「前」就和云台对不上了。此时只自转、不平移。 */
+    const bool frame_ok = yaw->is_enabled();
+    const float vx_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_lv());
+    const float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_lh());
 
-    auto* spin_comm = GetGimbalChassisComm();
-    auto* spin_imu  = GetImu();
+    /* 旋转方向与跟随模式一致(实测编码器 θ 与底盘 w 的正方向相反) */
+    float vx =  vx_stick * cosf(theta) + vy_stick * sinf(theta);
+    float vy = -vx_stick * sinf(theta) + vy_stick * cosf(theta);
+    if (!frame_ok) { vx = 0.0f; vy = 0.0f; }
 
-    if (spin_comm != nullptr && spin_imu != nullptr &&
-        !spin_comm->isOffline() &&
-        spin_imu->calib_done() &&
-        spin_comm->gimbal_data().imu_ready != 0u) {
+    g_dbg_spin_stick     = spin_stick;
+    g_dbg_spin_ref_yaw   = theta;
+    g_dbg_spin_ref_valid = frame_ok;
+    g_dbg_w_cmd          = w;
 
-      const float psi_gimbal  = spin_comm->gimbal_data().gimbal_yaw_world;
-      float psi_chassis = 0.0f;
-      spin_imu->yaw(&psi_chassis);
-
-      if (!spin_ref_valid) {
-        /* 进模式时把云台的世界朝向"冻结"成常量基准。
-         *
-         * ⚠ 这里必须存 psi_gimbal 本身,而不是像跟随模式那样存
-         *   (psi_gimbal − psi_chassis) 的差值。原因:
-         *   自转过程中云台会被底盘带着偏、再被自己的 IMU 闭环拉回来,
-         *   ψ_gimbal 是持续抖动的。如果每拍都去减这个实时值,
-         *   参考系就一直飘,走一点就偏。
-         *   云台"想指向哪"在进入模式那一刻就定了,之后不该再变。
-         *
-         * 所以:基准 = 常量(云台当时的世界朝向)
-         *     实时 = 底盘当前朝向
-         *     参考系偏角 = 基准 − 实时
-         * 这样"推前"永远指向进模式时云台指的世界方向,与云台
-         * 后续的抖动完全无关。
-         *
-         * ⚠ 2026-10-06 撤销"减 PI":实车验证两块板的朝向是对齐的,
-         *   ref_yaw 本来就 ≈0,那个 π 是误判。留着它反而会引入一个
-         *   假的 180° 旋转,和摇杆符号错误两次翻转相消,表现为"改了没反应"。
-         *   "推前后退"的真因是 rc_lv() 的符号约定,见下面摇杆映射那段。 */
-        spin_ref_psi = psi_gimbal;
-        spin_ref_valid  = true;
-        if (auto* p = GetPidFollow()) p->reset();
-      }
-      ref_yaw = WrapAngle(spin_ref_psi - psi_chassis);
-      g_dbg_spin_ref_valid = true;
-    } else {
-      /* 基准作废,下次条件满足时重采 */
-      spin_ref_valid = false;
-      g_dbg_spin_ref_valid = false;
-      ref_yaw = 0.0f;   /* 退化成车头方向 */
-    }
-
-    g_dbg_spin_ref_yaw = ref_yaw;
-
-    /* 左杆上下 = 前进后退,左杆左右 = 横移(小陀螺下云台让出通道)
-     *
-     * ⚠ 两个负号是必须的,不是笔误。
-     *   DR16 通道 3(右杆上下)和通道 4(左杆上下)物理朝向相反,
-     *   rc_lv() 的正方向和 rc_rv() 是反的;左右同理。
-     *   分离/跟随模式一直用右杆,所以约定是:
-     *     vx_stick = +kDbgMaxSpeed * rc_rv()    (robot.cpp:353 / :438)
-     *     vy_stick = -kDbgMaxSpeed * rc_rh()
-     *   小陀螺改用左杆却不跟着翻符号,实测表现为"推左杆上下反而后退"。
-     *   这里翻过来,和其他模式的杆→车体约定保持一致。 */
-    float vx_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_lv());
-    float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_lh());
-
-    /* 摇杆系 → 世界系:把"前"从参考系转到车体系。
-     * 车体系下 vx 是车头方向、vy 是车体左侧。 */
-    vx = vx_stick * cosf(ref_yaw) - vy_stick * sinf(ref_yaw);
-    vy = vx_stick * sinf(ref_yaw) + vy_stick * cosf(ref_yaw);
-
-    g_dbg_spin_stick = spin_stick;
-    g_dbg_w_cmd      = w;
-
-    /* 不叠摩擦前馈:自旋时轮速目标很小,固定 ~2A 的前馈占比过大,
-     * 跟随模式同样的问题(见 chassis.cpp g_friction_ff_enable 注释)。 */
+    /* ⑤ 下发。自旋时轮速目标小,不叠摩擦前馈 */
     chassis_->setSpeed(vx, vy, w, /*use_friction_ff=*/false);
   }
 

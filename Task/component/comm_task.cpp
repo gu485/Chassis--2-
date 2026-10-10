@@ -138,7 +138,7 @@ void CommTask(void) {
    * ⚠ 急停也拦不住:云台板输出全零,但底盘这边还在发,总线上照样有帧。
    *
    * 要回退到"底盘控云台"的旧架构,把 kGimbalOwnsYawMotor 改回 true。 */
-  static constexpr bool kGimbalOwnsYawMotor = false;
+  static constexpr bool kGimbalOwnsYawMotor = false;  // yaw 电机由云台板驱动,底盘板不发
 
   if (kGimbalOwnsYawMotor) {
     auto* yaw = GetMotorYaw();
@@ -160,7 +160,12 @@ void CommTask(void) {
       auto* rc = GetRemoteControl();
       /* 遥控器没接到这一侧时按 0 发,别用上次的旧值——
        * 云台板会拿旧摇杆值继续积分目标角度。 */
-      float lh = (rc != nullptr) ? rc->rc_lh() : 0.0f;
+      /* 云台 yaw 的摇杆通道:分离/跟随用左杆左右 rc_lh,
+       * 小陀螺用右杆左右 rc_rh(左杆让给平移)。云台板协议不变,仍读 rc_lh_q。 */
+      float lh = 0.0f;
+      if (rc != nullptr) {
+        lh = (g_dbg_robot_mode == kWorkModeSpin) ? rc->rc_rh() : rc->rc_lh();
+      }
       float lv = (rc != nullptr) ? rc->rc_lv() : 0.0f;
 
       cd.rc_lh_q = robot::GimbalChassisComm::QuantizeStick(lh);
@@ -169,9 +174,10 @@ void CommTask(void) {
       /* 把底盘急停状态跨板传给云台。云台板没有 DR16,拿不到拨杆,
        * 不传的话会出现"底盘已急停、云台还在转"的不一致。 */
       cd.estop = g_estop_latched ? 1u : 0u;
-      /* 小陀螺模式下左摇杆左右被征用成横移,云台不能再跟着摇杆动,
-       * 关掉云台使能,让它只做世界锁定。 */
-      cd.gimbal_enabled = (g_dbg_robot_mode == kWorkModeSpin) ? 0u : 1u;
+      /* 小陀螺下云台也由摇杆(右杆左右)控制,使能恒为 1 */
+      cd.gimbal_enabled = 1u;
+      /* 告诉云台板当前是否小陀螺,云台据此切换独立的速度环 PID */
+      cd.spin_mode = (g_dbg_robot_mode == kWorkModeSpin) ? 1u : 0u;
 
       uint8_t data[8] = {0};
       comm->encode(data);

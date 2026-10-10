@@ -32,6 +32,4 @@ class Pid;
 hello_world::pid::Pid *GetPidMotorWheel(int idx);
 /* 获取跟随模式(云台角度→底盘角速度)PID 单例。 */
 hello_world::pid::Pid *GetPidFollow();
-/* 云台 yaw 角速度环(w_yaw − w_current → 力矩)PID 单例。 */
-hello_world::pid::Pid *GetPidYawRate();
 #endif /* CHASSIS_INSTANCE_INS_PID_HPP_ */

@@ -49,24 +49,11 @@ hello_world::pid::Pid *GetPidFollow() {
   if (p == nullptr) {
     // 跟随模式是位置环(θ → 0),不建议加 I:θ 有 ±π 跳变,积分会累积出假偏差
     p = new hello_world::pid::Pid(
-        /*kp=*/0.9f,
+        /*kp=*/1.7f,
         /*ki=*/0.0f,      // ← 关键:积分关掉
         /*kd=*/0.0f,      // ← 关键:1kHz 采样下原始差分噪声太大
         /*i_limit=*/0.5f,
         /*out_limit=*/2.0f);   // ← w 限幅 2 rad/s,别让底盘追飞
-  }
-  return p;
-}
-hello_world::pid::Pid *GetPidYawRate() {
-  static hello_world::pid::Pid *p = nullptr;
-  if (p == nullptr) {
-    // 云台 yaw 角速度环:误差 rad/s → 力矩 N·m(DM4310)。起步值,上机再调
-    p = new hello_world::pid::Pid(
-        /*kp=*/0.3f,
-        /*ki=*/0.5f,
-        /*kd=*/0.0f,
-        /*i_limit=*/1.0f,
-        /*out_limit=*/3.0f);   // 力矩限幅 N·m
   }
   return p;
 }
