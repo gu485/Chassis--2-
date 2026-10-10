@@ -160,12 +160,18 @@ void CommTask(void) {
       auto* rc = GetRemoteControl();
       /* 遥控器没接到这一侧时按 0 发,别用上次的旧值——
        * 云台板会拿旧摇杆值继续积分目标角度。 */
-      /* 云台 yaw 的摇杆通道:分离/跟随用左杆左右 rc_lh,
-       * 小陀螺用右杆左右 rc_rh(左杆让给平移)。云台板协议不变,仍读 rc_lh_q。 */
-      float lh = 0.0f;
-      if (rc != nullptr) {
-        lh = (g_dbg_robot_mode == kWorkModeSpin) ? rc->rc_rh() : rc->rc_lh();
-      }
+      /* 云台 yaw 的摇杆通道:分离/跟随用左杆左右 rc_lh。
+       *
+       * 小陀螺下不发摇杆(恒 0):云台板此时跑的是位置环(Gimbal::UpdateTorqueCmd
+       * 的 spin 分支),用进入模式时冻结的 theta_init 做世界锁定,靠 IMU 锁住
+       * 朝向,不需要也不应该有人去拨它。之前这里小陀螺发的是右杆左右 rc_rh,
+       * 会和位置环打架 —— 摇杆推着云台转,位置环又拉回来,表现是云台发抖。
+       * 小陀螺的摇杆分配现在是:
+       *   左杆上下 → 前后,左杆左右 → 横移(平移)
+       *   右杆上下 → 自转角速度
+       *   右杆左右 → 空闲
+       * 云台板协议不变,仍读 rc_lh_q,只是小陀螺时这个字段恒为 0。 */
+      float lh = (rc != nullptr && g_dbg_robot_mode != kWorkModeSpin) ? rc->rc_lh() : 0.0f;
       float lv = (rc != nullptr) ? rc->rc_lv() : 0.0f;
 
       cd.rc_lh_q = robot::GimbalChassisComm::QuantizeStick(lh);
@@ -174,7 +180,10 @@ void CommTask(void) {
       /* 把底盘急停状态跨板传给云台。云台板没有 DR16,拿不到拨杆,
        * 不传的话会出现"底盘已急停、云台还在转"的不一致。 */
       cd.estop = g_estop_latched ? 1u : 0u;
-      /* 小陀螺下云台也由摇杆(右杆左右)控制,使能恒为 1 */
+      /* 云台使能:恒为 1。
+       * 小陀螺下不发摇杆,云台走位置环做世界锁定,不需要用这个位去禁用它。
+       * (早期版本小陀螺会置 0 让云台"什么都不做",那时云台还没有独立的位置环,
+       *  现在有了,语义变了:保留 1 = 云台主动锁住世界朝向。) */
       cd.gimbal_enabled = 1u;
       /* 告诉云台板当前是否小陀螺,云台据此切换独立的速度环 PID */
       cd.spin_mode = (g_dbg_robot_mode == kWorkModeSpin) ? 1u : 0u;

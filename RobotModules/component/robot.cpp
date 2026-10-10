@@ -439,6 +439,7 @@ namespace robot{
     static int   calib_cnt  = 0;
     static float calib_sum  = 0.0f;
     static float theta_0    = 0.0f;
+    
     static uint32_t last_ms = 0;
 
     const uint32_t now_ms = HAL_GetTick();
@@ -469,11 +470,11 @@ namespace robot{
 
       /* 摇杆系 → 底盘系: 平移方向跟随云台 */
       float vx_stick =  kDbgMaxSpeed * ApplyDeadzone(rc->rc_rv());
-      float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_rh());
+      float vy_stick =  -kDbgMaxSpeed * ApplyDeadzone(rc->rc_rh());
       /* 旋转角取 -theta_rel: 实测云台转到侧面时平移方向反了,
        * 说明编码器 θ 的正方向与底盘 w 的逆时针正方向相反。 */
-      vx =  vx_stick * cosf(theta_rel) + vy_stick * sinf(theta_rel);
-      vy = -vx_stick * sinf(theta_rel) + vy_stick * cosf(theta_rel);
+      vx =  vx_stick * cosf(theta_1) - vy_stick * sinf(theta_1);
+      vy =  vx_stick * sinf(theta_1) + vy_stick * cosf(theta_1);
 
       /* 底盘转速: 目标 0, 当前 theta。符号沿用之前实测的 w = -pid(0, θ)
        * (= +kp·θ, 底盘朝云台方向转); 若实车反着追, 去掉前面的负号。 */
@@ -493,14 +494,18 @@ namespace robot{
   void Robot::run_spin()
   {
     /* === 小陀螺模式 ===
-     * 底盘自转 + 平移;平移方向取云台坐标系的前后左右;云台 yaw 由右杆左右控制。
+     * 底盘自转 + 平移;平移方向取云台坐标系的前后左右;云台锁死在进入模式时的世界朝向。
      *
      * 摇杆分配:
      *   左杆上下 rc_lv → 云台系前后    左杆左右 rc_lh → 云台系左右
      *   右杆上下 rc_rv → 小陀螺转速 w = kw × 摇杆
-     *   右杆左右 rc_rh → 云台 yaw 目标角速度(经双板通讯发给云台板,
-     *                    comm_task 在小陀螺模式下把 rc_rh 填进 rc_lh_q 字段,
-     *                    云台板的速度环与跟随模式完全一致)
+     *   右杆左右 rc_rh → 空闲
+     *
+     * 云台为什么不接受摇杆:这个模式下云台板跑的是位置环(用进入时冻结的
+     * theta_init 做世界锁定),它必须占着 yaw 电机才能把朝向锁住。2026-10-10
+     * 去掉了这里曾有的"右杆左右 → 云台 yaw 转速"通路,否则摇杆推着云台转、
+     * 位置环又拉回来,两边打架表现为云台发抖。协议侧对应改动在
+     * comm_task.cpp:小陀螺时 rc_lh_q 恒发 0。
      *
      * 云台坐标系:跟随模式同款,用 yaw 电机编码器角 theta(云台相对底盘),
      * 把云台系下的"前/左"速度旋转到底盘系,底盘转到哪,"前"始终指向云台所指方向。 */
@@ -537,16 +542,17 @@ namespace robot{
      * 符号约定与之前一致:左杆通道与右杆物理朝向相反,故 lv、lh 取负。 */
     auto* yaw = GetMotorYaw();
     /* 与跟随模式同一个定义: theta = 编码器角 − theta_0, 回绕到 [-π, π)。 */
-    const float theta = WrapAngle(yaw->angle() - (s_theta0_valid ? s_theta0 : 0.0f));
+
+    const float theta = yaw->angle();
     /* yaw 电机掉使能/报故障时编码器角会冻结, 继续按旧 theta 旋转平移方向,
      * 底盘一转, 「前」就和云台对不上了。此时只自转、不平移。 */
     const bool frame_ok = yaw->is_enabled();
-    const float vx_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_lv());
+    const float vx_stick =  kDbgMaxSpeed * ApplyDeadzone(rc->rc_lv());
     const float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_lh());
 
     /* 旋转方向与跟随模式一致(实测编码器 θ 与底盘 w 的正方向相反) */
-    float vx =  vx_stick * cosf(theta) + vy_stick * sinf(theta);
-    float vy = -vx_stick * sinf(theta) + vy_stick * cosf(theta);
+    float vx =  vx_stick * cosf(theta) - vy_stick * sinf(theta);
+    float vy =  vx_stick * sinf(theta) + vy_stick * cosf(theta);
     if (!frame_ok) { vx = 0.0f; vy = 0.0f; }
 
     g_dbg_spin_stick     = spin_stick;

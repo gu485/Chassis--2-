@@ -23,11 +23,15 @@
 #include"imu.hpp"   // Imu 完整定义(ins_imu.hpp 只有前向声明)
 #include"main.h"   // Error_Handler
 
+/* yaw 电机当前编码器角度 theta_1(rad),初始化为 0 */
+volatile float theta_1 = 0.0f;
+
 using namespace robot;   // GetRobot / GetChassis 都在 robot:: 下,加这一行免去逐个写限定
 
 
 /* Exported function definitions ---------------------------------------------*/
 void MainTaskInit(void) {
+  theta_1 = 0.0f;
   /* TODO【新人任务】:
    * 一次性初始化（由 main() 在 while(1) 之前调用一次）：
    *   1. 通过 Instance 层的 GetXxx() 拿到电机 / IMU / 遥控器 / 双板通讯 / Robot 等对象，
