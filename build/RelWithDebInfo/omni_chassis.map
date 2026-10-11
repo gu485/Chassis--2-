@@ -4076,7 +4076,7 @@ LOAD D:/tuoke/python/arm-gnu-toolchain-14.3.rel1-mingw-w64-i686-arm-none-eabi/bi
 LOAD D:/tuoke/python/arm-gnu-toolchain-14.3.rel1-mingw-w64-i686-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libm.a
 LOAD D:/tuoke/python/arm-gnu-toolchain-14.3.rel1-mingw-w64-i686-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/thumb/v7e-m+fp/hard\libgcc.a
 
-.debug_info     0x00000000    0x769e8
+.debug_info     0x00000000    0x769f8
  .debug_info    0x00000000      0xdd6 CMakeFiles/omni_chassis.dir/Core/Src/can.c.obj
  .debug_info    0x00000dd6      0x585 CMakeFiles/omni_chassis.dir/Core/Src/dma.c.obj
  .debug_info    0x0000135b      0x543 CMakeFiles/omni_chassis.dir/Core/Src/gpio.c.obj
@@ -4111,26 +4111,26 @@ LOAD D:/tuoke/python/arm-gnu-toolchain-14.3.rel1-mingw-w64-i686-arm-none-eabi/bi
  .debug_info    0x0003d564      0x3a1 CMakeFiles/omni_chassis.dir/Instance/component/ins_pid.cpp.obj
  .debug_info    0x0003d905      0x620 CMakeFiles/omni_chassis.dir/Instance/component/ins_robot.cpp.obj
  .debug_info    0x0003df25     0x334c CMakeFiles/omni_chassis.dir/RobotModules/component/chassis.cpp.obj
- .debug_info    0x00041271     0x7158 CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj
- .debug_info    0x000483c9     0x66e0 CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj
- .debug_info    0x0004eaa9     0x4fc0 CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj
- .debug_info    0x00053a69     0x2cb8 CMakeFiles/omni_chassis.dir/D_/ROBO/omni_skeleton/RobotComponents/component/gimbal_chassis_comm.cpp.obj
- .debug_info    0x00056721       0x30 CMakeFiles/omni_chassis.dir/startup_stm32f407xx.s.obj
- .debug_info    0x00056751      0xa70 libdrivers.a(stm32f4xx_hal.c.obj)
- .debug_info    0x000571c1     0x15a0 libdrivers.a(stm32f4xx_hal_can.c.obj)
- .debug_info    0x00058761     0x1302 libdrivers.a(stm32f4xx_hal_cortex.c.obj)
- .debug_info    0x00059a63      0xd28 libdrivers.a(stm32f4xx_hal_dma.c.obj)
- .debug_info    0x0005a78b      0x8a2 libdrivers.a(stm32f4xx_hal_gpio.c.obj)
- .debug_info    0x0005b02d      0x27d libdrivers.a(stm32f4xx_hal_iwdg.c.obj)
- .debug_info    0x0005b2aa      0xd92 libdrivers.a(stm32f4xx_hal_rcc.c.obj)
- .debug_info    0x0005c03c     0x2020 libdrivers.a(stm32f4xx_hal_spi.c.obj)
- .debug_info    0x0005e05c     0x5b69 libdrivers.a(stm32f4xx_hal_tim.c.obj)
- .debug_info    0x00063bc5     0x25c0 libdrivers.a(stm32f4xx_hal_tim_ex.c.obj)
- .debug_info    0x00066185     0x43f2 libdrivers.a(stm32f4xx_hal_uart.c.obj)
- .debug_info    0x0006a577     0x24db third_party/libcmsis_dsp.a(BasicMathFunctions.c.obj)
- .debug_info    0x0006ca52     0x2287 third_party/libcmsis_dsp.a(FastMathFunctions.c.obj)
- .debug_info    0x0006ecd9     0x76ee third_party/libcmsis_dsp.a(MatrixFunctions.c.obj)
- .debug_info    0x000763c7      0x621 third_party/libcmsis_dsp.a(QuaternionMathFunctions.c.obj)
+ .debug_info    0x00041271     0x7168 CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj
+ .debug_info    0x000483d9     0x66e0 CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj
+ .debug_info    0x0004eab9     0x4fc0 CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj
+ .debug_info    0x00053a79     0x2cb8 CMakeFiles/omni_chassis.dir/D_/ROBO/omni_skeleton/RobotComponents/component/gimbal_chassis_comm.cpp.obj
+ .debug_info    0x00056731       0x30 CMakeFiles/omni_chassis.dir/startup_stm32f407xx.s.obj
+ .debug_info    0x00056761      0xa70 libdrivers.a(stm32f4xx_hal.c.obj)
+ .debug_info    0x000571d1     0x15a0 libdrivers.a(stm32f4xx_hal_can.c.obj)
+ .debug_info    0x00058771     0x1302 libdrivers.a(stm32f4xx_hal_cortex.c.obj)
+ .debug_info    0x00059a73      0xd28 libdrivers.a(stm32f4xx_hal_dma.c.obj)
+ .debug_info    0x0005a79b      0x8a2 libdrivers.a(stm32f4xx_hal_gpio.c.obj)
+ .debug_info    0x0005b03d      0x27d libdrivers.a(stm32f4xx_hal_iwdg.c.obj)
+ .debug_info    0x0005b2ba      0xd92 libdrivers.a(stm32f4xx_hal_rcc.c.obj)
+ .debug_info    0x0005c04c     0x2020 libdrivers.a(stm32f4xx_hal_spi.c.obj)
+ .debug_info    0x0005e06c     0x5b69 libdrivers.a(stm32f4xx_hal_tim.c.obj)
+ .debug_info    0x00063bd5     0x25c0 libdrivers.a(stm32f4xx_hal_tim_ex.c.obj)
+ .debug_info    0x00066195     0x43f2 libdrivers.a(stm32f4xx_hal_uart.c.obj)
+ .debug_info    0x0006a587     0x24db third_party/libcmsis_dsp.a(BasicMathFunctions.c.obj)
+ .debug_info    0x0006ca62     0x2287 third_party/libcmsis_dsp.a(FastMathFunctions.c.obj)
+ .debug_info    0x0006ece9     0x76ee third_party/libcmsis_dsp.a(MatrixFunctions.c.obj)
+ .debug_info    0x000763d7      0x621 third_party/libcmsis_dsp.a(QuaternionMathFunctions.c.obj)
 
 .debug_abbrev   0x00000000     0xf1eb
  .debug_abbrev  0x00000000      0x267 CMakeFiles/omni_chassis.dir/Core/Src/can.c.obj
@@ -4498,7 +4498,7 @@ LOAD D:/tuoke/python/arm-gnu-toolchain-14.3.rel1-mingw-w64-i686-arm-none-eabi/bi
  .debug_rnglists
                 0x00002d70       0x6e third_party/libcmsis_dsp.a(QuaternionMathFunctions.c.obj)
 
-.debug_line     0x00000000    0x34dc3
+.debug_line     0x00000000    0x34dc1
  .debug_line    0x00000000      0x510 CMakeFiles/omni_chassis.dir/Core/Src/can.c.obj
  .debug_line    0x00000510      0x234 CMakeFiles/omni_chassis.dir/Core/Src/dma.c.obj
  .debug_line    0x00000744      0x2b5 CMakeFiles/omni_chassis.dir/Core/Src/gpio.c.obj
@@ -4533,83 +4533,83 @@ LOAD D:/tuoke/python/arm-gnu-toolchain-14.3.rel1-mingw-w64-i686-arm-none-eabi/bi
  .debug_line    0x000103b7      0x13c CMakeFiles/omni_chassis.dir/Instance/component/ins_pid.cpp.obj
  .debug_line    0x000104f3      0x364 CMakeFiles/omni_chassis.dir/Instance/component/ins_robot.cpp.obj
  .debug_line    0x00010857      0xa89 CMakeFiles/omni_chassis.dir/RobotModules/component/chassis.cpp.obj
- .debug_line    0x000112e0     0x19ca CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj
- .debug_line    0x00012caa      0xf7e CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj
- .debug_line    0x00013c28      0xaf1 CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj
- .debug_line    0x00014719      0xa48 CMakeFiles/omni_chassis.dir/D_/ROBO/omni_skeleton/RobotComponents/component/gimbal_chassis_comm.cpp.obj
- .debug_line    0x00015161       0x7a CMakeFiles/omni_chassis.dir/startup_stm32f407xx.s.obj
- .debug_line    0x000151db      0x6ca libdrivers.a(stm32f4xx_hal.c.obj)
- .debug_line    0x000158a5     0x153b libdrivers.a(stm32f4xx_hal_can.c.obj)
- .debug_line    0x00016de0      0xa8d libdrivers.a(stm32f4xx_hal_cortex.c.obj)
- .debug_line    0x0001786d     0x10ca libdrivers.a(stm32f4xx_hal_dma.c.obj)
- .debug_line    0x00018937      0x9cd libdrivers.a(stm32f4xx_hal_gpio.c.obj)
- .debug_line    0x00019304      0x372 libdrivers.a(stm32f4xx_hal_iwdg.c.obj)
- .debug_line    0x00019676      0xec8 libdrivers.a(stm32f4xx_hal_rcc.c.obj)
- .debug_line    0x0001a53e     0x287e libdrivers.a(stm32f4xx_hal_spi.c.obj)
- .debug_line    0x0001cdbc     0x720d libdrivers.a(stm32f4xx_hal_tim.c.obj)
- .debug_line    0x00023fc9     0x26eb libdrivers.a(stm32f4xx_hal_tim_ex.c.obj)
- .debug_line    0x000266b4     0x3ad9 libdrivers.a(stm32f4xx_hal_uart.c.obj)
- .debug_line    0x0002a18d     0x1a2d third_party/libcmsis_dsp.a(BasicMathFunctions.c.obj)
- .debug_line    0x0002bbba     0x1e41 third_party/libcmsis_dsp.a(FastMathFunctions.c.obj)
- .debug_line    0x0002d9fb     0x6a40 third_party/libcmsis_dsp.a(MatrixFunctions.c.obj)
- .debug_line    0x0003443b      0x988 third_party/libcmsis_dsp.a(QuaternionMathFunctions.c.obj)
+ .debug_line    0x000112e0     0x19c8 CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj
+ .debug_line    0x00012ca8      0xf7e CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj
+ .debug_line    0x00013c26      0xaf1 CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj
+ .debug_line    0x00014717      0xa48 CMakeFiles/omni_chassis.dir/D_/ROBO/omni_skeleton/RobotComponents/component/gimbal_chassis_comm.cpp.obj
+ .debug_line    0x0001515f       0x7a CMakeFiles/omni_chassis.dir/startup_stm32f407xx.s.obj
+ .debug_line    0x000151d9      0x6ca libdrivers.a(stm32f4xx_hal.c.obj)
+ .debug_line    0x000158a3     0x153b libdrivers.a(stm32f4xx_hal_can.c.obj)
+ .debug_line    0x00016dde      0xa8d libdrivers.a(stm32f4xx_hal_cortex.c.obj)
+ .debug_line    0x0001786b     0x10ca libdrivers.a(stm32f4xx_hal_dma.c.obj)
+ .debug_line    0x00018935      0x9cd libdrivers.a(stm32f4xx_hal_gpio.c.obj)
+ .debug_line    0x00019302      0x372 libdrivers.a(stm32f4xx_hal_iwdg.c.obj)
+ .debug_line    0x00019674      0xec8 libdrivers.a(stm32f4xx_hal_rcc.c.obj)
+ .debug_line    0x0001a53c     0x287e libdrivers.a(stm32f4xx_hal_spi.c.obj)
+ .debug_line    0x0001cdba     0x720d libdrivers.a(stm32f4xx_hal_tim.c.obj)
+ .debug_line    0x00023fc7     0x26eb libdrivers.a(stm32f4xx_hal_tim_ex.c.obj)
+ .debug_line    0x000266b2     0x3ad9 libdrivers.a(stm32f4xx_hal_uart.c.obj)
+ .debug_line    0x0002a18b     0x1a2d third_party/libcmsis_dsp.a(BasicMathFunctions.c.obj)
+ .debug_line    0x0002bbb8     0x1e41 third_party/libcmsis_dsp.a(FastMathFunctions.c.obj)
+ .debug_line    0x0002d9f9     0x6a40 third_party/libcmsis_dsp.a(MatrixFunctions.c.obj)
+ .debug_line    0x00034439      0x988 third_party/libcmsis_dsp.a(QuaternionMathFunctions.c.obj)
 
-.debug_str      0x00000000     0xdfde
- .debug_str     0x00000000     0xdfde CMakeFiles/omni_chassis.dir/Core/Src/can.c.obj
+.debug_str      0x00000000     0xdff0
+ .debug_str     0x00000000     0xdff0 CMakeFiles/omni_chassis.dir/Core/Src/can.c.obj
                                 0xbb6 (size before relaxing)
- .debug_str     0x0000dfde      0x7fa CMakeFiles/omni_chassis.dir/Core/Src/dma.c.obj
- .debug_str     0x0000dfde      0x3b9 CMakeFiles/omni_chassis.dir/Core/Src/gpio.c.obj
- .debug_str     0x0000dfde      0x283 CMakeFiles/omni_chassis.dir/Core/Src/iwdg.c.obj
- .debug_str     0x0000dfde      0xb36 CMakeFiles/omni_chassis.dir/Core/Src/main.c.obj
- .debug_str     0x0000dfde      0x834 CMakeFiles/omni_chassis.dir/Core/Src/spi.c.obj
- .debug_str     0x0000dfde      0x2e8 CMakeFiles/omni_chassis.dir/Core/Src/stm32f4xx_hal_msp.c.obj
- .debug_str     0x0000dfde      0xdf1 CMakeFiles/omni_chassis.dir/Core/Src/stm32f4xx_it.c.obj
- .debug_str     0x0000dfde      0x426 CMakeFiles/omni_chassis.dir/Core/Src/syscalls.c.obj
- .debug_str     0x0000dfde      0x252 CMakeFiles/omni_chassis.dir/Core/Src/sysmem.c.obj
- .debug_str     0x0000dfde      0x3a2 CMakeFiles/omni_chassis.dir/Core/Src/system_stm32f4xx.c.obj
- .debug_str     0x0000dfde     0x1022 CMakeFiles/omni_chassis.dir/Core/Src/tim.c.obj
- .debug_str     0x0000dfde      0xe25 CMakeFiles/omni_chassis.dir/Core/Src/usart.c.obj
- .debug_str     0x0000dfde     0x3319 CMakeFiles/omni_chassis.dir/src/BMI088.cpp.obj
- .debug_str     0x0000dfde      0xbbd CMakeFiles/omni_chassis.dir/src/DT7.cpp.obj
- .debug_str     0x0000dfde     0x25c5 CMakeFiles/omni_chassis.dir/src/HW_can.cpp.obj
- .debug_str     0x0000dfde     0x1e27 CMakeFiles/omni_chassis.dir/src/ahrs_base.cpp.obj
- .debug_str     0x0000dfde     0x30ce CMakeFiles/omni_chassis.dir/src/imu.cpp.obj
- .debug_str     0x0000dfde     0x2295 CMakeFiles/omni_chassis.dir/src/mahony.cpp.obj
- .debug_str     0x0000dfde     0x1e60 CMakeFiles/omni_chassis.dir/src/motor.cpp.obj
- .debug_str     0x0000dfde     0x2bd3 CMakeFiles/omni_chassis.dir/src/motor_DaMiao.cpp.obj
- .debug_str     0x0000dfde     0x1d49 CMakeFiles/omni_chassis.dir/src/motor_M2006.cpp.obj
- .debug_str     0x0000dfde     0x1d79 CMakeFiles/omni_chassis.dir/src/motor_M3508.cpp.obj
- .debug_str     0x0000dfde     0x1b8c CMakeFiles/omni_chassis.dir/src/motor_base.cpp.obj
- .debug_str     0x0000dfde      0x2b0 CMakeFiles/omni_chassis.dir/src/pid.cpp.obj
- .debug_str     0x0000dfde      0x651 CMakeFiles/omni_chassis.dir/src/tick.cpp.obj
- .debug_str     0x0000dfde     0x19fb CMakeFiles/omni_chassis.dir/Instance/component/ins_chassis_gimbal_comm.cpp.obj
- .debug_str     0x0000dfde      0xa4c CMakeFiles/omni_chassis.dir/Instance/component/ins_chassis_iksolver.cpp.obj
- .debug_str     0x0000dfde      0xbe1 CMakeFiles/omni_chassis.dir/Instance/component/ins_comm.cpp.obj
- .debug_str     0x0000dfde     0x2cef CMakeFiles/omni_chassis.dir/Instance/component/ins_imu.cpp.obj
- .debug_str     0x0000dfde     0x1dba CMakeFiles/omni_chassis.dir/Instance/component/ins_motor.cpp.obj
- .debug_str     0x0000dfde      0x32d CMakeFiles/omni_chassis.dir/Instance/component/ins_pid.cpp.obj
- .debug_str     0x0000dfde      0x737 CMakeFiles/omni_chassis.dir/Instance/component/ins_robot.cpp.obj
- .debug_str     0x0000dfde     0x22d5 CMakeFiles/omni_chassis.dir/RobotModules/component/chassis.cpp.obj
- .debug_str     0x0000dfde     0x433e CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj
- .debug_str     0x0000dfde     0x495f CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj
- .debug_str     0x0000dfde     0x35cd CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj
- .debug_str     0x0000dfde     0x1b1c CMakeFiles/omni_chassis.dir/D_/ROBO/omni_skeleton/RobotComponents/component/gimbal_chassis_comm.cpp.obj
- .debug_str     0x0000dfde       0x8b CMakeFiles/omni_chassis.dir/startup_stm32f407xx.s.obj
- .debug_str     0x0000dfde      0xbb1 libdrivers.a(stm32f4xx_hal.c.obj)
- .debug_str     0x0000dfde      0xa70 libdrivers.a(stm32f4xx_hal_can.c.obj)
- .debug_str     0x0000dfde      0xcc4 libdrivers.a(stm32f4xx_hal_cortex.c.obj)
- .debug_str     0x0000dfde      0x7b1 libdrivers.a(stm32f4xx_hal_dma.c.obj)
- .debug_str     0x0000dfde      0x51b libdrivers.a(stm32f4xx_hal_gpio.c.obj)
- .debug_str     0x0000dfde      0x2d5 libdrivers.a(stm32f4xx_hal_iwdg.c.obj)
- .debug_str     0x0000dfde      0x741 libdrivers.a(stm32f4xx_hal_rcc.c.obj)
- .debug_str     0x0000dfde      0xc2f libdrivers.a(stm32f4xx_hal_spi.c.obj)
- .debug_str     0x0000dfde     0x174c libdrivers.a(stm32f4xx_hal_tim.c.obj)
- .debug_str     0x0000dfde      0xf58 libdrivers.a(stm32f4xx_hal_tim_ex.c.obj)
- .debug_str     0x0000dfde      0xdd6 libdrivers.a(stm32f4xx_hal_uart.c.obj)
- .debug_str     0x0000dfde      0x68f third_party/libcmsis_dsp.a(BasicMathFunctions.c.obj)
- .debug_str     0x0000dfde      0x674 third_party/libcmsis_dsp.a(FastMathFunctions.c.obj)
- .debug_str     0x0000dfde      0xbdf third_party/libcmsis_dsp.a(MatrixFunctions.c.obj)
- .debug_str     0x0000dfde      0x3c2 third_party/libcmsis_dsp.a(QuaternionMathFunctions.c.obj)
+ .debug_str     0x0000dff0      0x7fa CMakeFiles/omni_chassis.dir/Core/Src/dma.c.obj
+ .debug_str     0x0000dff0      0x3b9 CMakeFiles/omni_chassis.dir/Core/Src/gpio.c.obj
+ .debug_str     0x0000dff0      0x283 CMakeFiles/omni_chassis.dir/Core/Src/iwdg.c.obj
+ .debug_str     0x0000dff0      0xb36 CMakeFiles/omni_chassis.dir/Core/Src/main.c.obj
+ .debug_str     0x0000dff0      0x834 CMakeFiles/omni_chassis.dir/Core/Src/spi.c.obj
+ .debug_str     0x0000dff0      0x2e8 CMakeFiles/omni_chassis.dir/Core/Src/stm32f4xx_hal_msp.c.obj
+ .debug_str     0x0000dff0      0xdf1 CMakeFiles/omni_chassis.dir/Core/Src/stm32f4xx_it.c.obj
+ .debug_str     0x0000dff0      0x426 CMakeFiles/omni_chassis.dir/Core/Src/syscalls.c.obj
+ .debug_str     0x0000dff0      0x252 CMakeFiles/omni_chassis.dir/Core/Src/sysmem.c.obj
+ .debug_str     0x0000dff0      0x3a2 CMakeFiles/omni_chassis.dir/Core/Src/system_stm32f4xx.c.obj
+ .debug_str     0x0000dff0     0x1022 CMakeFiles/omni_chassis.dir/Core/Src/tim.c.obj
+ .debug_str     0x0000dff0      0xe25 CMakeFiles/omni_chassis.dir/Core/Src/usart.c.obj
+ .debug_str     0x0000dff0     0x3319 CMakeFiles/omni_chassis.dir/src/BMI088.cpp.obj
+ .debug_str     0x0000dff0      0xbbd CMakeFiles/omni_chassis.dir/src/DT7.cpp.obj
+ .debug_str     0x0000dff0     0x25c5 CMakeFiles/omni_chassis.dir/src/HW_can.cpp.obj
+ .debug_str     0x0000dff0     0x1e27 CMakeFiles/omni_chassis.dir/src/ahrs_base.cpp.obj
+ .debug_str     0x0000dff0     0x30ce CMakeFiles/omni_chassis.dir/src/imu.cpp.obj
+ .debug_str     0x0000dff0     0x2295 CMakeFiles/omni_chassis.dir/src/mahony.cpp.obj
+ .debug_str     0x0000dff0     0x1e60 CMakeFiles/omni_chassis.dir/src/motor.cpp.obj
+ .debug_str     0x0000dff0     0x2bd3 CMakeFiles/omni_chassis.dir/src/motor_DaMiao.cpp.obj
+ .debug_str     0x0000dff0     0x1d49 CMakeFiles/omni_chassis.dir/src/motor_M2006.cpp.obj
+ .debug_str     0x0000dff0     0x1d79 CMakeFiles/omni_chassis.dir/src/motor_M3508.cpp.obj
+ .debug_str     0x0000dff0     0x1b8c CMakeFiles/omni_chassis.dir/src/motor_base.cpp.obj
+ .debug_str     0x0000dff0      0x2b0 CMakeFiles/omni_chassis.dir/src/pid.cpp.obj
+ .debug_str     0x0000dff0      0x651 CMakeFiles/omni_chassis.dir/src/tick.cpp.obj
+ .debug_str     0x0000dff0     0x19fb CMakeFiles/omni_chassis.dir/Instance/component/ins_chassis_gimbal_comm.cpp.obj
+ .debug_str     0x0000dff0      0xa4c CMakeFiles/omni_chassis.dir/Instance/component/ins_chassis_iksolver.cpp.obj
+ .debug_str     0x0000dff0      0xbe1 CMakeFiles/omni_chassis.dir/Instance/component/ins_comm.cpp.obj
+ .debug_str     0x0000dff0     0x2cef CMakeFiles/omni_chassis.dir/Instance/component/ins_imu.cpp.obj
+ .debug_str     0x0000dff0     0x1dba CMakeFiles/omni_chassis.dir/Instance/component/ins_motor.cpp.obj
+ .debug_str     0x0000dff0      0x32d CMakeFiles/omni_chassis.dir/Instance/component/ins_pid.cpp.obj
+ .debug_str     0x0000dff0      0x737 CMakeFiles/omni_chassis.dir/Instance/component/ins_robot.cpp.obj
+ .debug_str     0x0000dff0     0x22d5 CMakeFiles/omni_chassis.dir/RobotModules/component/chassis.cpp.obj
+ .debug_str     0x0000dff0     0x4350 CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj
+ .debug_str     0x0000dff0     0x495f CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj
+ .debug_str     0x0000dff0     0x35cd CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj
+ .debug_str     0x0000dff0     0x1b1c CMakeFiles/omni_chassis.dir/D_/ROBO/omni_skeleton/RobotComponents/component/gimbal_chassis_comm.cpp.obj
+ .debug_str     0x0000dff0       0x8b CMakeFiles/omni_chassis.dir/startup_stm32f407xx.s.obj
+ .debug_str     0x0000dff0      0xbb1 libdrivers.a(stm32f4xx_hal.c.obj)
+ .debug_str     0x0000dff0      0xa70 libdrivers.a(stm32f4xx_hal_can.c.obj)
+ .debug_str     0x0000dff0      0xcc4 libdrivers.a(stm32f4xx_hal_cortex.c.obj)
+ .debug_str     0x0000dff0      0x7b1 libdrivers.a(stm32f4xx_hal_dma.c.obj)
+ .debug_str     0x0000dff0      0x51b libdrivers.a(stm32f4xx_hal_gpio.c.obj)
+ .debug_str     0x0000dff0      0x2d5 libdrivers.a(stm32f4xx_hal_iwdg.c.obj)
+ .debug_str     0x0000dff0      0x741 libdrivers.a(stm32f4xx_hal_rcc.c.obj)
+ .debug_str     0x0000dff0      0xc2f libdrivers.a(stm32f4xx_hal_spi.c.obj)
+ .debug_str     0x0000dff0     0x174c libdrivers.a(stm32f4xx_hal_tim.c.obj)
+ .debug_str     0x0000dff0      0xf58 libdrivers.a(stm32f4xx_hal_tim_ex.c.obj)
+ .debug_str     0x0000dff0      0xdd6 libdrivers.a(stm32f4xx_hal_uart.c.obj)
+ .debug_str     0x0000dff0      0x68f third_party/libcmsis_dsp.a(BasicMathFunctions.c.obj)
+ .debug_str     0x0000dff0      0x674 third_party/libcmsis_dsp.a(FastMathFunctions.c.obj)
+ .debug_str     0x0000dff0      0xbdf third_party/libcmsis_dsp.a(MatrixFunctions.c.obj)
+ .debug_str     0x0000dff0      0x3c2 third_party/libcmsis_dsp.a(QuaternionMathFunctions.c.obj)
 
 .comment        0x00000000       0x46
  .comment       0x00000000       0x46 CMakeFiles/omni_chassis.dir/Core/Src/can.c.obj

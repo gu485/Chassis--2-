@@ -33,6 +33,7 @@ extern volatile bool g_estop_latched;       // chassis.cpp  :左拨杆急停档�
 
 /* === 分离模式参数 === */
 static constexpr float kDbgMaxSpeed = 0.07f;   // 右摇杆打满对应的平移速度 m/s
+static constexpr float kDbgMaxSpeed_spin = 0.10f;  // 小陀螺专用:左摇杆打满对应的平移速度 m/s
 static constexpr float kYawMaxVel   = 1.0f;   // 左摇杆打满对应的 yaw 角速度 rad/s
 static constexpr float kYawKd       = 2.0f;   // MIT 模式"纯速度"用法阻尼系数(kp=0)
 
@@ -547,8 +548,8 @@ namespace robot{
     /* yaw 电机掉使能/报故障时编码器角会冻结, 继续按旧 theta 旋转平移方向,
      * 底盘一转, 「前」就和云台对不上了。此时只自转、不平移。 */
     const bool frame_ok = yaw->is_enabled();
-    const float vx_stick =  kDbgMaxSpeed * ApplyDeadzone(rc->rc_lv());
-    const float vy_stick = -kDbgMaxSpeed * ApplyDeadzone(rc->rc_lh());
+    const float vx_stick =  kDbgMaxSpeed_spin * ApplyDeadzone(rc->rc_lv());
+    const float vy_stick = -kDbgMaxSpeed_spin * ApplyDeadzone(rc->rc_lh());
 
     /* 旋转方向与跟随模式一致(实测编码器 θ 与底盘 w 的正方向相反) */
     float vx =  vx_stick * cosf(theta) - vy_stick * sinf(theta);

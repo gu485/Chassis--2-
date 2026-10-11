@@ -650,14 +650,14 @@
 21303	21878	8129173450925714	CMakeFiles/omni_chassis.dir/src/stm32_hal.cpp.obj	7841e6ab08c68a85
 21315	22882	8129173451059415	CMakeFiles/omni_chassis.dir/src/tick.cpp.obj	6c89bbcfd5704c79
 23023	23424	8129173468136443	CMakeFiles/omni_chassis.dir/Instance/component/ins_comm.cpp.obj	f73723d9037e2053
-47	1475	8132626954530449	CMakeFiles/omni_chassis.dir/src/HW_can.cpp.obj	e96ff22912a7a281
+42	1382	8133273581511931	CMakeFiles/omni_chassis.dir/src/HW_can.cpp.obj	e96ff22912a7a281
 113	2185	8129173643217486	CMakeFiles/omni_chassis.dir/src/base.cpp.obj	1750a901e711ca33
 22882	23900	8129173466720921	CMakeFiles/omni_chassis.dir/Instance/component/ins_chassis_iksolver.cpp.obj	eaf8888e8a2db60b
 132	2613	8129173643407451	CMakeFiles/omni_chassis.dir/src/mahony.cpp.obj	21994ae99f8a90ee
 102	2610	8129173643107393	CMakeFiles/omni_chassis.dir/src/ahrs_base.cpp.obj	c0f1050b05823f62
 47	1119	8132537077183401	CMakeFiles/omni_chassis.dir/Instance/component/ins_imu.cpp.obj	a1f8b70e246ad48f
 23094	23488	8129173468842229	CMakeFiles/omni_chassis.dir/Instance/component/ins_robot.cpp.obj	aea281c886d2fbeb
-30	177	8132631584040451	CMakeFiles/omni_chassis.dir/Instance/component/ins_pid.cpp.obj	eb3dace644d18bdb
+57	180	8133264417108334	CMakeFiles/omni_chassis.dir/Instance/component/ins_pid.cpp.obj	eb3dace644d18bdb
 79	2611	8129173642880666	CMakeFiles/omni_chassis.dir/src/BMI088.cpp.obj	736ff1bfbc9b2033
 139	2207	8129173643477502	CMakeFiles/omni_chassis.dir/src/motor.cpp.obj	25296c51e32010dc
 148	2755	8129173643562615	CMakeFiles/omni_chassis.dir/src/motor_DaMiao.cpp.obj	d27f4c6d7ce59d0c
@@ -666,68 +666,16 @@
 23681	23885	8129173474708170	third_party/CMakeFiles/segger_rtt.dir/SEGGER/RTT/SEGGER_RTT_ASM_ARMv7M.S.obj	3f62daf46af64cbe
 165	2379	8129173643743533	CMakeFiles/omni_chassis.dir/src/motor_M3508.cpp.obj	4a26e64ff0a29639
 23446	23953	8129173472356106	CMakeFiles/omni_chassis.dir/startup_stm32f407xx.s.obj	f487f7d6dc16c6cd
-65	1221	8132537077368818	CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj	fc8f4a255cd4613e
-57	1241	8132626954640470	CMakeFiles/omni_chassis.dir/Instance/component/ins_chassis_gimbal_comm.cpp.obj	acaf450c1c6f0c8d
+27	1057	8133351836894164	CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj	fc8f4a255cd4613e
+52	1185	8133273581621933	CMakeFiles/omni_chassis.dir/Instance/component/ins_chassis_gimbal_comm.cpp.obj	acaf450c1c6f0c8d
 23600	24049	8129173473899368	third_party/CMakeFiles/segger_rtt.dir/SEGGER/RTT/SEGGER_RTT_printf.c.obj	c4950aeed882d5aa
 23521	24213	8129173473108072	third_party/CMakeFiles/segger_rtt.dir/SEGGER/RTT/SEGGER_RTT.c.obj	33291d42aa0e3efd
 24213	24528	8129173480035256	third_party/libsegger_rtt.a	6d69fa3da298dfc7
 40	1277	8132631584140450	CMakeFiles/omni_chassis.dir/RobotModules/component/chassis.cpp.obj	f55b90b5136b7abf
-88	1320	8132626954940452	CMakeFiles/omni_chassis.dir/D_/ROBO/omni_skeleton/RobotComponents/component/gimbal_chassis_comm.cpp.obj	7db69e63588872b2
-57	1370	8132631584310463	CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj	67c32687acccd6b2
-206	2625	8129173644143536	CMakeFiles/omni_chassis.dir/Instance/component/ins_motor.cpp.obj	1b16984670ace9b9
-52	1170	8132632270106660	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-23489	25773	8129173472783958	third_party/libcmsis_dsp.a	8ce9c58d579b4e79
-1170	1442	8132632281284140	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-39	1162	8132537077105009	CMakeFiles/omni_chassis.dir/src/imu.cpp.obj	e6fe64de56b555ae
-54	1290	8133258402536764	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1291	1909	8133258414900604	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-45	159	8133259738992068	CMakeFiles/omni_chassis.dir/Instance/component/ins_pid.cpp.obj	eb3dace644d18bdb
-159	465	8133259740129977	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-51	1120	8133261265629589	CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj	67c32687acccd6b2
-40	1131	8133261265520072	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1132	1474	8133261276430337	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-57	180	8133264417108334	CMakeFiles/omni_chassis.dir/Instance/component/ins_pid.cpp.obj	eb3dace644d18bdb
-181	521	8133264418345754	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-52	1185	8133273581621933	CMakeFiles/omni_chassis.dir/Instance/component/ins_chassis_gimbal_comm.cpp.obj	acaf450c1c6f0c8d
 87	1232	8133273581973104	CMakeFiles/omni_chassis.dir/D_/ROBO/omni_skeleton/RobotComponents/component/gimbal_chassis_comm.cpp.obj	7db69e63588872b2
-42	1382	8133273581511931	CMakeFiles/omni_chassis.dir/src/HW_can.cpp.obj	e96ff22912a7a281
-75	1465	8133273581843868	CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj	67c32687acccd6b2
-63	1497	8133273581727722	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1497	1798	8133273596073518	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-33	1364	8133339440021640	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1365	1682	8133339453337289	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-44	1109	8133340797381639	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1109	1380	8133340808031060	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-55	1338	8133341400387385	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1338	1623	8133341413226502	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-64	1242	8133342312581980	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1242	1572	8133342324369165	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-54	1135	8133343647592179	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1135	1402	8133343658401151	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-57	1163	8133346025049952	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1164	1432	8133346036113255	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-27	1057	8133351836894164	CMakeFiles/omni_chassis.dir/Task/component/main_task.cpp.obj	fc8f4a255cd4613e
-1057	1353	8133351847185418	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-50	1241	8133352532017221	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1242	1528	8133352543924064	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-80	1460	8133359719810960	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1461	1746	8133359733616182	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-40	1067	8133364168895693	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1068	1350	8133364179175165	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-45	1157	8133365669468934	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1158	1438	8133365680601183	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-41	1064	8133367060641936	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1064	1335	8133367070873732	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-39	1139	8133367563347796	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1140	1412	8133367574359440	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-48	1121	8133367854913415	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1121	1401	8133367865643353	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-53	1199	8133368679658863	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1199	1475	8133368691120638	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-53	1055	8133369629106433	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1055	1311	8133369639121378	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
-41	1077	8133371752345252	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1077	1359	8133371762702541	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
 40	1237	8133390240911390	CMakeFiles/omni_chassis.dir/Task/component/comm_task.cpp.obj	67c32687acccd6b2
-30	1304	8133390240801150	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
-1305	1596	8133390253556298	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
+206	2625	8129173644143536	CMakeFiles/omni_chassis.dir/Instance/component/ins_motor.cpp.obj	1b16984670ace9b9
+39	1077	8133455489600765	CMakeFiles/omni_chassis.dir/RobotModules/component/robot.cpp.obj	e91a2d60147c5049
+23489	25773	8129173472783958	third_party/libcmsis_dsp.a	8ce9c58d579b4e79
+1077	1342	8133455499984218	D:/ROBO/omni_skeleton/Chassis (2)/build/omni_chassis.elf	cebab934a486fb99
+39	1162	8132537077105009	CMakeFiles/omni_chassis.dir/src/imu.cpp.obj	e6fe64de56b555ae
