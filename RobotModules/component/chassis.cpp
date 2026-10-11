@@ -169,13 +169,10 @@ void Chassis::setSpeed(float vx, float vy, float w, bool use_friction_ff) {
     float target = ik->targetVel(i);
     g_wheel_target[i] = target;     // 节点⓪:本轮目标转速
 
-    // 反馈速度 → PID(沿用老工程的"原始报文"量级去调参) → raw
-    float raw_out = pid->calc(target, motor->vel());
-    g_wheel_pid_raw[i] = raw_out;   // 节点②:PID 原始输出
-
-    // 电机是 kCurr 输入类型(见 ins_motor.cpp),setInput 要的是安培,不是 raw,
-    // 用电机自己的换算表把 raw 转成安培,再写进电机单例(下一毫秒 CommTask 负责 encode + 发)
-    float curr = motor->raw2Curr(raw_out);
+    // 反馈速度 → PID, 输出直接是电流(A)
+    float curr = pid->calc(target, motor->vel());
+    const float pid_out = curr;     // 保存纯 PID 输出, 后面 curr 还要叠加前馈
+    g_wheel_pid_raw[i] = pid_out;   // 节点②:PID 输出(A)
 
     /* 惯性制动前馈:本拍给一个跟"上一拍转速"反向的电流,抵消轮子惯性。
      * 摇杆回中后 target 归零,这个项让车快速刹住,不再小飘。
@@ -213,10 +210,10 @@ void Chassis::setSpeed(float vx, float vy, float w, bool use_friction_ff) {
 
     if (i == 0 || i == 1) {
       if (i == 0) {
-        g_dbg_w0_pidraw = raw_out;
+        g_dbg_w0_pidraw = pid_out;
         g_dbg_w0_curr   = curr;
       } else {
-        g_dbg_w1_pidraw = raw_out;
+        g_dbg_w1_pidraw = pid_out;
         g_dbg_w1_curr   = curr;
       }
     }

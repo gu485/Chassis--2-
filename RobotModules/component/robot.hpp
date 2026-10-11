@@ -57,6 +57,8 @@ namespace robot{
     volatile WorkMode  mode_     = WorkMode::INIT;     // 工作模式(三模式 + 急停)
     volatile LifeState state_    = LifeState::DEAD;    // 生命周期三态
     uint32_t           resurrection_enter_ms_ = 0;     // 进入 RESURRECTION 的时刻
+    WorkMode           prev_mode_ = WorkMode::INIT;    // 上一拍的工作模式, 用于检测模式切换
+    bool               mode_ready_ = false;            // 当前模式的入口检查是否已通过
   };
 }
 

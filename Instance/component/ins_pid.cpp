@@ -32,14 +32,18 @@ hello_world::pid::Pid *GetPidMotorWheel(int idx) {
   static hello_world::pid::Pid *pids[kPidCount] = {nullptr};
 
   if (pids[idx] == nullptr) {
-    // 起始参数:从老 GM6020 那套 130/0.3/0 起步,M3508 实测要重调
-    // M3508 电流范围 ±16384,out_limit 起步给 8000 留余量
+    // 轮速速度环: 误差 rad/s -> 输出直接是电流 A (不再是电调原始值)。
+    // 由旧的原始值参数等效换算而来 (原始值 -> 安培 系数 = 20A / 16384):
+    //   kp 13080 -> 15.97 A/(rad/s)   ki 0.1 -> 0.000122
+    //   i_limit 4000 -> 4.88 A        out_limit 8000 -> 9.77 A
+    // M3508 + C620 额定持续电流 20 A, out_limit 给一半留余量。
+    // 注意 kp 的物理含义: 轮速误差超过 out_limit/kp ≈ 0.61 rad/s 输出就顶满限幅。
     pids[idx] = new hello_world::pid::Pid(
-        /*kp=*/       13080.0f,
-        /*ki=*/         0.1f,
-        /*kd=*/         0.0f,
-        /*i_limit=*/  4000.0f,    // 积分限幅:不能比 out_limit 还大,否则积分抗饱和形同虚设
-        /*out_limit=*/ 8000.0f);  // 输出(电流)限幅
+        /*kp=*/       15.97f,
+        /*ki=*/        0.000122f,
+        /*kd=*/        0.0f,
+        /*i_limit=*/   4.88f,     // 积分限幅(A): 不能比 out_limit 还大, 否则抗饱和形同虚设
+        /*out_limit=*/ 9.77f);    // 输出(电流 A)限幅
   }
   return pids[idx];
 }

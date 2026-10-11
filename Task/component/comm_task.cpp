@@ -46,11 +46,7 @@ extern volatile bool g_estop_latched;
 /* robot.cpp 里的当前工作模式镜像。用于判断要不要关掉云台使能。
  * 小陀螺(SPIN)下左摇杆左右被征用成横移,云台必须只做世界锁定。 */
 extern volatile int  g_dbg_robot_mode;
-/* WorkMode 枚举值的小陀螺模式,与 robot.hpp 里的定义保持一致。
- * 这里不 include robot.hpp 是为了避免 Task 层依赖 RobotModules 层
- * (Task 只依赖 Instance 层),所以复制这个常量并加注释说明来源。
- * 如果以后 robot.hpp 里改了枚举顺序,这里要同步改。 */
-static constexpr int kWorkModeSpin = 3;
+
 
 /* === 双板通讯调试 === */
 /* g_dbg_c2g_frame_cnt : 底盘→云台 发帧计数,一直涨说明发送链路通
@@ -59,6 +55,19 @@ static constexpr int kWorkModeSpin = 3;
 volatile uint32_t g_dbg_c2g_frame_cnt = 0;
 volatile uint32_t g_dbg_g2c_rx_cnt    = 0;
 volatile float   g_dbg_gimbal_yaw_rx = 0.0f;
+
+/* === IMU 调试镜像(搜 g_dbg_imu 即可找到所有) === */
+/* init_err:0=通,bit0=加速度计 ID 错,bit1=陀螺仪 ID 错,bit2/3=自检失败,bit4/5=配置报错 */
+volatile uint8_t g_dbg_imu_init_err     = 0;
+volatile bool    g_dbg_imu_calib_done   = false;   /* 上电后 1 秒变 true */
+/* 当前姿态角(rad,水平放置应全 ≈ 0)*/
+volatile float g_dbg_imu_roll    = 0.0f;          /* 翻滚角 */
+volatile float g_dbg_imu_pitch   = 0.0f;          /* 俯仰角 */
+volatile float g_dbg_imu_yaw     = 0.0f;          /* 偏航角(给小陀螺用) */
+/* 原始读数: 单位 g,水平静止 |acc|≈9.8(用来验证 BMI088 接线对不对) */
+volatile float g_dbg_imu_acc[3]  = {0, 0, 0};
+/* 原始陀螺仪: 单位 rad/s,静止应 ≈ 0(验证陀螺仪接线 + 标定) */
+volatile float g_dbg_imu_gyro[3] = {0, 0, 0};
 
 /* DT7(DBUS)调试用计数器 */
 uint32_t g_uart3_rx_cnt = 0;       // 空闲中断触发次数
@@ -112,6 +121,30 @@ void CommTask(void) {
   g_can_motor_esr = hcan2.Instance->ESR;  // 每拍刷新一次电机总线的 ESR
   g_can1_esr      = hcan1.Instance->ESR;  // yaw 所在 CAN1 的 ESR
   GetImu()->update();
+
+  /* IMU 调试镜像:紧跟在 update() 后面,读到的一定是同一拍的数据 */
+  {
+    auto* imu = GetImu();
+    if (imu != nullptr) {
+      g_dbg_imu_init_err   = static_cast<uint8_t>(imu->init_err());
+      g_dbg_imu_calib_done = imu->calib_done();
+      /* 临时变量中转:避免 volatile float* 与 float* 类型不匹配 */
+      float r, p, y;
+      float a[3], g_[3];
+      imu->roll (&r);
+      imu->pitch(&p);
+      imu->yaw  (&y);
+      imu->acc  (a);
+      imu->gyro (g_);
+      g_dbg_imu_roll  = r;
+      g_dbg_imu_pitch = p;
+      g_dbg_imu_yaw   = y;
+      for (int i = 0; i < 3; i++) {
+        g_dbg_imu_acc[i]  = a[i];
+        g_dbg_imu_gyro[i] = g_[i];
+      }
+    }
+  }
   /* 遍历 4 个轮电机,ID 1~4 共用同一条报文(0x200),必须先把 4 个电机的数据
    * 填进同一个缓冲区,再整帧一次性发出——不能各发各的,否则后发的电机会把
    * 先前电机的字节位清零,导致电调收到的电流指令在真实值和 0 之间跳变。 */
@@ -161,17 +194,8 @@ void CommTask(void) {
       /* 遥控器没接到这一侧时按 0 发,别用上次的旧值——
        * 云台板会拿旧摇杆值继续积分目标角度。 */
       /* 云台 yaw 的摇杆通道:分离/跟随用左杆左右 rc_lh。
-       *
-       * 小陀螺下不发摇杆(恒 0):云台板此时跑的是位置环(Gimbal::UpdateTorqueCmd
-       * 的 spin 分支),用进入模式时冻结的 theta_init 做世界锁定,靠 IMU 锁住
-       * 朝向,不需要也不应该有人去拨它。之前这里小陀螺发的是右杆左右 rc_rh,
-       * 会和位置环打架 —— 摇杆推着云台转,位置环又拉回来,表现是云台发抖。
-       * 小陀螺的摇杆分配现在是:
-       *   左杆上下 → 前后,左杆左右 → 横移(平移)
-       *   右杆上下 → 自转角速度
-       *   右杆左右 → 空闲
        * 云台板协议不变,仍读 rc_lh_q,只是小陀螺时这个字段恒为 0。 */
-      float lh = (rc != nullptr && g_dbg_robot_mode != kWorkModeSpin) ? rc->rc_lh() : 0.0f;
+      float lh = (rc != nullptr && g_dbg_robot_mode != robot::kModeSpin) ? rc->rc_lh() : 0.0f;
       float lv = (rc != nullptr) ? rc->rc_lv() : 0.0f;
 
       cd.rc_lh_q = robot::GimbalChassisComm::QuantizeStick(lh);
@@ -185,8 +209,8 @@ void CommTask(void) {
        * (早期版本小陀螺会置 0 让云台"什么都不做",那时云台还没有独立的位置环,
        *  现在有了,语义变了:保留 1 = 云台主动锁住世界朝向。) */
       cd.gimbal_enabled = 1u;
-      /* 告诉云台板当前是否小陀螺,云台据此切换独立的速度环 PID */
-      cd.spin_mode = (g_dbg_robot_mode == kWorkModeSpin) ? 1u : 0u;
+      /* 把底盘当前工作模式发给云台板, 云台据此选择控制环路和 PID */
+      cd.work_mode = static_cast<uint8_t>(g_dbg_robot_mode);
 
       uint8_t data[8] = {0};
       comm->encode(data);

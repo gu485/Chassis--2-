@@ -31,7 +31,7 @@ using namespace robot;   // GetRobot / GetChassis 都在 robot:: 下,加这一�
 
 /* Exported function definitions ---------------------------------------------*/
 void MainTaskInit(void) {
-  theta_1 = 0.0f;
+
   /* TODO【新人任务】:
    * 一次性初始化（由 main() 在 while(1) 之前调用一次）：
    *   1. 通过 Instance 层的 GetXxx() 拿到电机 / IMU / 遥控器 / 双板通讯 / Robot 等对象，
@@ -40,11 +40,11 @@ void MainTaskInit(void) {
    *   3. 调用 CommTaskInit() 完成通讯初始化（UART 接收、IWDG 等）。
    * 注意：不要在这里写任何周期性逻辑。
    */
-  auto* robot = GetRobot();
-  auto* chassis = GetChassis();
+  auto* robot = GetRobot();//得到一个robot实例 robot用于更新各个状态 下发任务
+  auto* chassis = GetChassis();//得到一个chassis实例 chassis用于下发底盘运动指令
   robot->RegisterChassis(chassis);
-  // IMU 初始化(SPI 握手 + Mahony);失败则卡死,避免带着坏 IMU 进入控制
-  if (GetImu()->init() != 0) Error_Handler();
+  if (GetImu()->init() != 0) Error_Handler();//得到一个imu实例+确保传感器正常+spi正常 如果错误
+
   // 通讯层也初始化
   CommTaskInit();
 }

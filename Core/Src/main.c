@@ -99,20 +99,21 @@ int main(void)
   MX_CAN1_Init();
   MX_USART3_UART_Init();
   MX_TIM6_Init();
-  // MX_IWDG_Init();  // 看门狗未喂狗会导致周期性复位,暂时禁用
   MX_USART6_UART_Init();
   MX_USART1_UART_Init();
   MX_SPI1_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOH, GPIO_PIN_11, GPIO_PIN_RESET);
-   // 看门狗未喂狗会导致周期性复位,暂时禁用
   MainTaskInit();  // 先完成一次性初始化(注册 Robot/Chassis、启动 CAN),再开周期中断
 
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start_IT(&htim4);
   HAL_TIM_Base_Start_IT(&htim6);
-MX_IWDG_Init(); 
+  /* 看门狗在 MainTaskInit(IMU 初始化等阻塞操作)和定时器启动之后才启动:
+   * IWDG 一旦启动就停不下来。CubeMX 里已勾选「不生成 MX_IWDG_Init 调用」,
+   * 这里是唯一的启动点。喂狗在 CommTask() 末尾(1kHz 控制中断)。 */
+  MX_IWDG_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */

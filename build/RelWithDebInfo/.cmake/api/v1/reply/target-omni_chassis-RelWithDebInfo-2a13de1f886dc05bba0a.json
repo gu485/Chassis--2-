@@ -649,12 +649,12 @@
 	"dependencies" : 
 	[
 		{
-			"backtrace" : 2,
-			"id" : "drivers::@6890427a1f51a3e7e1df"
-		},
-		{
 			"backtrace" : 3,
 			"id" : "cmsis_dsp::@037116246cbfaaeb5504"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "drivers::@6890427a1f51a3e7e1df"
 		}
 	],
 	"id" : "omni_chassis::@6890427a1f51a3e7e1df",

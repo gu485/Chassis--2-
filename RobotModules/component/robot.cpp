@@ -26,6 +26,7 @@
 #include "ins_chassis_gimbal_comm.hpp"   // GetGimbalChassisComm()
 #include "gimbal_chassis_comm.hpp"       // robot::GimbalChassisComm 完整定义
 /* === 引用外部计数器 / 急停锁存标志(定义在其它 cpp) === */
+extern uint32_t      g_dt7_decode_cnt;      // comm_task.cpp:DT7 成功解码帧计数
 extern uint32_t      g_uart3_rx_cnt;        // comm_task.cpp:DT7 收到帧计数
 extern volatile bool g_estop_latched;       // chassis.cpp  :左拨杆急停档锁存
 /* Private macro -------------------------------------------------------------*/
@@ -38,38 +39,19 @@ static constexpr float kYawMaxVel   = 1.0f;   // 左摇杆打满对应的 yaw �
 static constexpr float kYawKd       = 2.0f;   // MIT 模式"纯速度"用法阻尼系数(kp=0)
 
 /* === 小陀螺模式参数 === */
-/* 摇杆推满对应的自转角速度(rad/s)。3.0 rad/s ≈ 172°/s,
- * 大约 2.1 秒转一圈。麦克纳姆轮高速自旋时容易打滑,
- * 起步先用这个保守值,不够快再往上调。 */
-/* 编译期标定的满量程角速度。现在 run_spin() 实际下发用的是下面的
- * g_dbg_spin_omega(volatile,Ozone 可实时改),这个 constexpr 只作为
- * "标定参考值"保留 —— 两者调好后保持一致即可。
- * 3.0 rad/s ≈ 172°/s,约 2.1 秒转一圈;麦克纳姆轮高速自旋容易打滑。 */
-/* w 斜率限制(rad/s 每 1ms 拍):0.003 → 约 0.5 秒从 0 加到 1.5 rad/s */
+
 static constexpr float kSpinWRamp = 0.003f;
 
 /* === 小陀螺目标角速度(Ozone 可实时改) ===
  *
  * g_dbg_spin_omega:摇杆推满时对应的自转角速度 rad/s。
- * 现场调转速直接改这个变量,**不用重新编译烧录**。
- *
- * 注意 run_spin() 里下发用的是这个变量,不是 constexpr 的 kSpinOmega ——
- * kSpinOmega 只是"编译期标定值",真正生效的是这个 volatile。
- * 调好之后把两者的默认值设成一致,代码读起来不困惑。
- *
- * 参考换算:
- *   1.0 rad/s ≈ 57°/s → 6.3 秒一圈
- *   1.5 rad/s ≈ 86°/s → 4.2 秒一圈
- *   2.0 rad/s ≈ 115°/s → 3.1 秒一圈
- *   3.0 rad/s ≈ 172°/s → 2.1 秒一圈 */
+ * 
 /* 小陀螺转速系数 kw: w = kw × 右杆上下(rad/s)。Ozone 可实时改。 */
 volatile float g_dbg_spin_kw = 1.5f;
 
 /* === 跟随模式参数 ===
  * w = kFollowKp * θ
- * θ = 云台相对底盘的夹角(rad,已在 ins_motor.cpp 里用 angle_offset 标定为 0)
- * 底盘朝 θ 的方向转,就能把云台"追"回正前方,θ 自然收敛到 0。
- * 起步给 1.0;觉得跟太肉就加大,出现来回摆就减小。 */
+*/
 static constexpr float kFollowKp    = 1.0f;
 
 /* === 摇杆信号保护 === */
@@ -174,18 +156,6 @@ volatile float g_dbg_spin_ref_yaw   = 0.0f;
 /* 小陀螺平移世界锁定的基准:进入模式时冻结的云台世界朝向(rad)。
  * 这是常量,之后不再更新 —— 云台自转期间的抖动不能影响平移参考系。 */
 
-/* === IMU 调试镜像(搜 g_dbg_imu 即可找到所有) === */
-/* init_err:0=通,bit0=加速度计 ID 错,bit1=陀螺仪 ID 错,bit2/3=自检失败,bit4/5=配置报错 */
-volatile uint8_t g_dbg_imu_init_err     = 0;
-volatile bool    g_dbg_imu_calib_done   = false;   /* 上电后 1 秒变 true */
-/* 当前姿态角(rad,水平放置应全 ≈ 0)*/
-volatile float g_dbg_imu_roll    = 0.0f;          /* 翻滚角 */
-volatile float g_dbg_imu_pitch   = 0.0f;          /* 俯仰角 */
-volatile float g_dbg_imu_yaw     = 0.0f;          /* 偏航角(给小陀螺用) */
-/* 原始读数: 单位 g,水平静止 |acc|≈9.8(用来验证 BMI088 接线对不对) */
-volatile float g_dbg_imu_acc[3]  = {0, 0, 0};
-/* 原始陀螺仪: 单位 rad/s,静止应 ≈ 0(验证陀螺仪接线 + 标定) */
-volatile float g_dbg_imu_gyro[3] = {0, 0, 0};
 /* Private types -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* External variables --------------------------------------------------------*/
@@ -197,35 +167,17 @@ namespace robot{
 
   void Robot::update()
   {
+    /* 双板协议的模式编号必须与本枚举顺序一致 */
+    static_assert(static_cast<int>(WorkMode::INIT)      == kModeInit,      "mode id mismatch");
+    static_assert(static_cast<int>(WorkMode::SEPARATED) == kModeSeparated, "mode id mismatch");
+    static_assert(static_cast<int>(WorkMode::FOLLOW)    == kModeFollow,    "mode id mismatch");
+    static_assert(static_cast<int>(WorkMode::SPIN)      == kModeSpin,      "mode id mismatch");
+    static_assert(static_cast<int>(WorkMode::EMERGENCY) == kModeEmergency, "mode id mismatch");
     DataUpdate();
 
     /* 同步调试镜像(Ozone 观察) */
     g_dbg_robot_state = static_cast<int>(state_);
     g_dbg_robot_mode  = static_cast<int>(mode_);
-
-    /* IMU 调试镜像(搜 g_dbg_imu 可全找到) */
-    {
-      auto* imu = GetImu();
-      if (imu != nullptr) {
-        g_dbg_imu_init_err   = static_cast<uint8_t>(imu->init_err());
-        g_dbg_imu_calib_done = imu->calib_done();
-        /* 临时变量中转:避免 volatile float* 与 float* 类型不匹配 */
-        float r, p, y;
-        float a[3], g_[3];
-        imu->roll (&r);
-        imu->pitch(&p);
-        imu->yaw  (&y);
-        imu->acc  (a);
-        imu->gyro (g_);
-        g_dbg_imu_roll  = r;
-        g_dbg_imu_pitch = p;
-        g_dbg_imu_yaw   = y;
-        for (int i = 0; i < 3; i++) {
-          g_dbg_imu_acc[i]  = a[i];
-          g_dbg_imu_gyro[i] = g_[i];
-        }
-      }
-    }
 
     /* 三态外壳:DEAD/RESURRECTION 全零输出;WORKING 才进模式派发.
      * 进入新状态都先清指令,避免电机突变(任务注释约束 #1). */
@@ -241,6 +193,20 @@ namespace robot{
       }
       case LifeState::RESURRECTION:{
         if (chassis_) chassis_->setSpeed(0,0,0);
+        /* 自检(全部满足才进 WORKING):
+         *   ① 底盘 IMU 零漂标定完成
+         *   ② yaw 电机在线并已使能: 跟随/小陀螺的平移方向靠它的编码器角度,
+         *      没使能时角度不可信
+         * 不满足就留在 RESURRECTION 等待, 并把计时起点刷新为当前时刻,
+         * 这样 100ms 稳定时间是从「条件刚满足」开始算的。 */
+        auto* imu_rdy = GetImu();
+        auto* yaw_rdy = GetMotorYaw();
+        const bool imu_ok = (imu_rdy != nullptr) && imu_rdy->calib_done();
+        const bool yaw_ok = (yaw_rdy != nullptr) && yaw_rdy->is_enabled();
+        if (!(imu_ok && yaw_ok)) {
+          resurrection_enter_ms_ = HAL_GetTick();
+          return;
+        }
         if (HAL_GetTick() - resurrection_enter_ms_ > 100) {
           state_ = LifeState::WORKING;
           if (chassis_) chassis_->setSpeed(0,0,0);
@@ -249,6 +215,38 @@ namespace robot{
       }
       case LifeState::WORKING:{
         ModeUpdate();
+
+        /* === 模式入口门 ===
+         * 刚切到分离 / 跟随 / 小陀螺时, 先把底盘指令清零, 等以下条件全部满足
+         * 才放行真正的控制逻辑:
+         *   ① 遥控器有数据: 至少解码过一帧, 且当前通道值在合法范围内
+         *   ② 底盘 IMU 零漂标定完成
+         *   ③ yaw 电机已初始化并使能
+         * 急停(EMERGENCY)不设门, 任何时候都要能立刻生效。
+         *
+         * 云台板的目标/力矩由它自己在切模式时清零(work_mode 变化时重置),
+         * 底盘这边只负责自己的轮子指令和 run_xxx 里的静态状态。 */
+        if (mode_ != prev_mode_) {
+          prev_mode_ = mode_;
+          mode_ready_ = false;
+          if (chassis_) chassis_->setSpeed(0, 0, 0);
+          g_dbg_w_cmd = 0.0f;
+        }
+        if (!mode_ready_ && mode_ != WorkMode::EMERGENCY &&
+            mode_ != WorkMode::INIT) {
+          auto* rc_g  = GetRemoteControl();
+          auto* imu_g = GetImu();
+          auto* yaw_g = GetMotorYaw();
+          const bool rc_ok  = g_dt7_decode_cnt > 0 && IsRcSignalValid(rc_g);
+          const bool imu_ok = (imu_g != nullptr) && imu_g->calib_done();
+          const bool yaw_ok = (yaw_g != nullptr) && yaw_g->is_enabled();
+          if (rc_ok && imu_ok && yaw_ok) {
+            mode_ready_ = true;
+          } else {
+            if (chassis_) chassis_->setSpeed(0, 0, 0);
+            return;
+          }
+        }
         switch(mode_){
           case WorkMode::INIT:      run_init();      return;
           case WorkMode::EMERGENCY: run_emergency(); return;
@@ -283,19 +281,15 @@ namespace robot{
   {
     /* 「无条件采集」层:不管当前是 DEAD / RESURRECTION / WORKING,也不管是哪个工作
      * 模式,每 1ms 都执行一次。所以调试镜像放在这里,任何状态下 Ozone 看到的都是
-     * 真实值,而不是某个模式没跑到时的陈旧初值。
-     *
-     * 之前这些镜像写在 run_seperated() / run_follow() 里,一旦状态机卡在 DEAD
-     * 或没切到对应档位,它们就永远停在初值(status_code=0、enabled=false),
-     * 排查时会被误导成"电机失能",实际根本没采过。 */
+     * 真实值,而不是某个模式没跑到时的陈旧初值。*/
+  
     auto* yaw = GetMotorYaw();
     g_dbg_theta           = yaw->angle();
     g_dbg_yaw_enabled     = yaw->is_enabled();
     g_dbg_yaw_status_code = yaw->status_code();
 
     /* 故障锁存:status_code 是 0(失能) / 1(使能) / 8~15(故障) 三类。
-     * 只把"故障"那一类(既不是 0 也不是 1)钉住不动,Ozone 里就能看到
-     * 电机到底报的是过压、欠压、过流、超温还是通信丢失。 */
+ */
     const uint8_t sc = static_cast<uint8_t>(yaw->status_code());
     if (sc != 0 && sc != 1) g_dbg_yaw_last_fault = sc;
 
@@ -327,7 +321,7 @@ namespace robot{
 
   void Robot::run_seperated()
   {
-    /* === 真正的分离模式 ===
+    /* === 分离模式 ===
      * 核心:把摇杆系(驾驶员相对云台朝向)的速度按 yaw 角度 θ 旋转到底盘系.
      * 底盘朝向不变(w=0),云台可被左摇杆横拨单独控制.
      *
@@ -370,11 +364,7 @@ namespace robot{
     g_dbg_w_cmd = 0.0f;          // 分离模式的 w 恒为 0
     chassis_->setSpeed(vx, vy, 0.0f, /*use_friction_ff=*/true);
 
-    /* 左摇杆横拨 → yaw 角速度.
-     * 云台板已接管 yaw 电机闭环(它用自己的 IMU 做世界锁定),
-     * 底盘这里只保留调试镜像,实际下发由 comm_task 通过双板通讯
-     * 把 rc_lh 原始值发给云台板。绝不能在这里再 setMitInput ——
-     * 两个节点同时驱同一个电机 ID 会让 CAN 仲裁随机,云台抽搐。 */
+    /* 左摇杆横拨 → yaw 角速度.*/
     float yaw_vel = -kYawMaxVel * ApplyDeadzone(rc->rc_lh());  // 与云台板方向一致(已取反)
     if (g_estop_latched) yaw_vel = 0.0f;
     g_dbg_yaw_vel_cmd = yaw_vel;
@@ -419,13 +409,6 @@ namespace robot{
     }
 
 
-    /* yaw 角度的采集与调试镜像已移到 DataUpdate()（无条件执行,任何状态都有真值） */
-    /* 平移方向仍用云台相对底盘的编码器角 theta。
-     * 为什么这个还用编码器而不用 IMU:平移指令是"底盘系 → 世界系"的旋转,
-     * 关心的是两个机械轴之间的**相对**关系,而 theta 恰好就是这个相对量,
-     * 且是本板直连电机反馈的,没有通信延迟。
-     * (云台的世界朝向要走 CAN 往返,有 0.5~1ms 延迟,用在平移方向上
-     *  会让整体运动有拖滞感。) */
     auto* yaw = GetMotorYaw();
 
     /* === 底盘追云台(只用 yaw 电机编码器, 不用 IMU) ===
@@ -501,12 +484,6 @@ namespace robot{
      *   左杆上下 rc_lv → 云台系前后    左杆左右 rc_lh → 云台系左右
      *   右杆上下 rc_rv → 小陀螺转速 w = kw × 摇杆
      *   右杆左右 rc_rh → 空闲
-     *
-     * 云台为什么不接受摇杆:这个模式下云台板跑的是位置环(用进入时冻结的
-     * theta_init 做世界锁定),它必须占着 yaw 电机才能把朝向锁住。2026-10-10
-     * 去掉了这里曾有的"右杆左右 → 云台 yaw 转速"通路,否则摇杆推着云台转、
-     * 位置环又拉回来,两边打架表现为云台发抖。协议侧对应改动在
-     * comm_task.cpp:小陀螺时 rc_lh_q 恒发 0。
      *
      * 云台坐标系:跟随模式同款,用 yaw 电机编码器角 theta(云台相对底盘),
      * 把云台系下的"前/左"速度旋转到底盘系,底盘转到哪,"前"始终指向云台所指方向。 */
